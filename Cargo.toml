@@ -13,5 +13,4 @@ lotus-extra = { path = "../../lotus-extra" }
 
 [dependencies]
 lotus-script = "*"
-lotus-actor = { path = "../lotus-actor" }
 lotus-extra = "*"

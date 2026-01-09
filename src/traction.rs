@@ -1,6 +1,6 @@
-use lotus_actor::{SystemUnit, piston_traction::PistonTractionTransfer};
+use lotus_extra::traction::PistonTractionTransfer;
 
-use crate::HashMaps;
+use crate::Backbone;
 
 pub struct Traction {
     traction_transfer: PistonTractionTransfer,
@@ -11,12 +11,6 @@ impl Default for Traction {
         Self {
             traction_transfer: PistonTractionTransfer::new(0, 1),
         }
-    }
-}
-
-impl SystemUnit<HashMaps> for Traction {
-    fn children(&self) -> Vec<&dyn SystemUnit<HashMaps>> {
-        vec![]
     }
 }
 
