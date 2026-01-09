@@ -1,35 +1,41 @@
 use std::collections::HashMap;
 
-use lotus_actor::prelude::*;
+use lotus_actor::{
+    piston_traction::PistonTractionTransfer, prelude::*, traction::RoadVehicleAxleProperties,
+};
 use lotus_extra::{
-    messages,
+    messages::std::AutomaticGearboxMode,
     road_steering::{RoadSteering, RoadSteeringProperties},
 };
-use lotus_script::{prelude::*, time::delta, vehicle::RoadWheel};
+use lotus_script::{prelude::*, vehicle::RoadWheel};
 
-use crate::cockpit::Cockpit;
+use crate::{cockpit::Cockpit, powersupply::Powersupply, traction::Traction};
 
 mod cockpit;
+mod powersupply;
+mod traction;
 mod vdv_dashboard;
 
 pub struct MyScript {
     hub: ActorHub,
-    cockpit: Cockpit,
     hash_maps: HashMaps,
     steering: RoadSteering,
+    axle: RoadVehicleAxleProperties,
+    powersupply: Powersupply,
+    traction: Traction,
+    cockpit: Cockpit,
 }
 
 impl Default for MyScript {
     fn default() -> Self {
         Self {
             hub: ActorHub::default(),
-            cockpit: Cockpit::default(),
             hash_maps: HashMaps::default(),
-            steering: RoadSteering::new(
-                RoadSteeringProperties::builder()
-                    // .wheel_deg_per_s(900.0)
-                    .build(),
-            ),
+            steering: RoadSteering::new(RoadSteeringProperties::builder().build()),
+            axle: RoadVehicleAxleProperties::new(1, 5.74, "DiffGear_mps"),
+            powersupply: Powersupply::default(),
+            cockpit: Cockpit::default(),
+            traction: Traction::default(),
         }
     }
 }
@@ -51,6 +57,8 @@ impl Script for MyScript {
             .insert(IndicatorLights::MasterCaution, test_actor);
 
         self.cockpit.init(&mut self.hub, &mut self.hash_maps);
+
+        self.cockpit.post_init(&mut self.hub, &mut self.hash_maps);
     }
 
     fn tick(&mut self) {
@@ -62,10 +70,7 @@ impl Script for MyScript {
         //     self.wheels[1].wheel_index()
         // );
 
-        // log::info!(
-        //     "wheel speed (km/h): {}",
-        //     get_var::<f64>("v_wheel_mps_1_0") * 3.6
-        // );
+        self.axle.tick();
 
         self.steering.tick();
 
@@ -76,52 +81,22 @@ impl Script for MyScript {
 
         // self.wheels[0].set_brake_force_newton(0.0);
         // self.wheels[1].set_brake_force_newton(0.0);
-
-        let current_tick = delta();
     }
 
     fn on_message(&mut self, msg: lotus_script::message::Message) {
         // log::info!("on_message: {:?}", msg);
 
-        self.on_message_traction(msg);
+        self.traction.on_message(msg);
     }
 }
 
-impl MyScript {
-    fn on_message_traction(&mut self, msg: lotus_script::message::Message) {
-        // Inertia Engine => Gearbox
-        msg.handle(|inv_j: messages::technical::InvMomentOfInertia| {
-            if msg.source().module_slot_index == Some(0) {
-                send_message(&inv_j, [MessageTarget::ChildByIndex(2)]);
-            }
-            Ok(())
-        })
-        .unwrap();
-
-        msg.handle(|t: messages::technical::Torque| {
-            // Torque Engine => Gearbox
-            if msg.source().module_slot_index == Some(0) {
-                send_message(&t, [MessageTarget::ChildByIndex(2)]);
-            }
-            Ok(())
-        })
-        .unwrap();
-
-        msg.handle(|s: messages::technical::RotationSpeed| {
-            // Rotation Speed Gearbox => Engine
-            if msg.source().module_slot_index == Some(1) {
-                send_message(&s, [MessageTarget::ChildByIndex(1)]);
-            }
-            Ok(())
-        })
-        .unwrap();
-    }
-}
+impl MyScript {}
 
 #[derive(Default)]
 pub struct HashMaps {
     indicator_lights: HashMap<IndicatorLights, ActorId<f32>>,
     ignition_state: Option<ActorId<IgnitionSwitchStep>>,
+    gear_box_mode_switch: Option<ActorId<AutomaticGearboxMode>>,
 }
 
 struct TestActor {

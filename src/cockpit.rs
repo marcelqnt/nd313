@@ -1,6 +1,7 @@
 use std::{io::WriterPanicked, iter::Map};
 
 use lotus_actor::{
+    base_actors::{Execute, MapperActor},
     cockpit::{
         ButtonProperties, StepSwitchProperties, StepSwitchSpringLoaded, simple_button, step_switch,
     },
@@ -32,7 +33,11 @@ impl SystemUnit<HashMaps> for Cockpit {
 
     fn init_self(&self, hub: &mut ActorHub, hash_maps: &mut HashMaps) {
         hash_maps.ignition_state = Some(hub.insert_actor(Execute::new(Box::new(|value| {
-            log::info!("ignition_state: {:?}", value);
+            log::info!("*** ignition_state: {:?} ***", value);
+        }))));
+
+        hash_maps.gear_box_mode_switch = Some(hub.insert_actor(Execute::new(Box::new(|value| {
+            log::info!("*** gear_box_mode_switch: {:?} ***", value);
         }))));
     }
 
@@ -50,7 +55,7 @@ impl SystemUnit<HashMaps> for Cockpit {
 
             let input_master_error = hub.insert_actor(MapperActor::<bool, f32>::new(
                 *master_error,
-                Box::new(|value| if *value { 1.0 } else { 0.0 }),
+                Box::new(|value| Some(if *value { 1.0 } else { 0.0 })),
             ));
 
             simple_button(
@@ -62,19 +67,6 @@ impl SystemUnit<HashMaps> for Cockpit {
                     .position(("Btn_Door1_Pos".to_string(), 1.0))
                     .output(input_master_error)
                     .springloaded(true)
-                    .build(),
-            );
-
-            let key_inserted = hub.insert_actor(VarWriter::<bool>::new("Key_Inserted"));
-
-            simple_button(
-                hub,
-                ButtonProperties::builder()
-                    .input(InputEvent::new("InsertKey_Main", 1))
-                    .sound_press("snd_KeyMain_Insert")
-                    .sound_release("snd_KeyMain_Pull")
-                    .output(key_inserted)
-                    .springloaded(false)
                     .build(),
             );
         }
