@@ -1,5 +1,6 @@
 use lotus_extra::{
     backbone::{self, BackBoneTick},
+    cockpit_enhanced::Cockpit,
     input::Input,
     road_vehicle::{AxleProperties, Steering, SteeringProperties},
 };
@@ -85,5 +86,5 @@ impl MyScript {}
 #[derive(Default)]
 pub struct Backbone {
     // test: Option<bool>,
-    pub cockpit: backbone::Cockpit,
+    pub cockpit: Cockpit,
 }
