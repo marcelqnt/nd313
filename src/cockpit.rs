@@ -1,5 +1,5 @@
 use lotus_extra::{
-    backbone::{self, BackBoneTick, ElementTraitReset},
+    backbone::{BackBoneTick, ElementTraitReset},
     cockpit::{Button, ButtonBehaviour},
     cockpit_enhanced::{
         AutomaticGearBoxModeSwitchGroupSwitch, AutomaticGearBoxModeSwitchProperties, Cockpit,
@@ -62,7 +62,7 @@ impl Default for CockpitNd313 {
                         ])
                         .build(),
                 ))
-                .btn_door1(
+                .btn_doors(vec![
                     Button::builder()
                         .input(InputEvent::new("Door1Toggle", 0))
                         .position(("Btn_Door1_Pos".to_string(), 1.0))
@@ -70,7 +70,7 @@ impl Default for CockpitNd313 {
                         .sound_release("snd_Btn_Door1_Release")
                         .behaviour(ButtonBehaviour::SpringLoaded)
                         .build(),
-                )
+                ])
                 .build(),
         }
     }
@@ -80,8 +80,8 @@ impl BackBoneTick<Cockpit> for CockpitNd313 {
     fn tick(&self, backbone: &mut Cockpit) {
         self.vdv_dashboard.tick(backbone);
 
-        backbone.door1.reset();
-        backbone.ignition_key.reset();
-        backbone.ignition_switch.reset();
+        if let Some(door) = backbone.doors.get_mut(0) {
+            door.reset();
+        }
     }
 }
