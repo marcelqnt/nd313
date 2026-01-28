@@ -11,13 +11,16 @@ impl MyScript {
     pub fn tick_interface(&mut self) {
         self.cockpit_power_supply_tick();
         self.cockpit_traction_tick();
+
+        self.cockpit_pneumatics_tick();
+        self.traction_pneumatics_tick();
+
+        self.backbone.reset();
     }
 
     fn cockpit_power_supply_tick(&mut self) {
         let p = &mut self.backbone.powersupply;
-        if let Some((state, i)) = self.backbone.cockpit.ignition_switch.state.get_refreshed() {
-            log::info!("Ignition Switch State: {}", i);
-
+        if let Some((state, _)) = self.backbone.cockpit.ignition_switch.state.get_refreshed() {
             p.get_bus(0)
                 .unwrap()
                 .main_relay
@@ -26,8 +29,14 @@ impl MyScript {
                 .unwrap()
                 .main_relay
                 .set(state >= IgnitionSwitchStep::Step2);
+        }
 
-            self.backbone.cockpit.ignition_switch.reset();
+        if let Some(electricity_available) = p.bus_active_refreshed(0) {
+            self.backbone
+                .cockpit
+                .display
+                .electricity_available
+                .set(electricity_available);
         }
     }
 
@@ -59,5 +68,13 @@ impl MyScript {
                 .automatic_gear_box_mode_switch_group
                 .reset();
         }
+    }
+
+    fn cockpit_pneumatics_tick(&mut self) {
+        self.backbone.cockpit.pneumatics = self.backbone.pneumatics;
+    }
+
+    fn traction_pneumatics_tick(&mut self) {
+        self.backbone.pneumatics.n_engine_rpm = 2000.0;
     }
 }

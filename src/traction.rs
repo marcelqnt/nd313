@@ -1,15 +1,15 @@
 use lotus_extra::{
     backbone::{BackBoneTick, ElementTraitReset},
     traction::{
-        BBPistonTraction, BBThrottleControl, PistonTraction, PistonTractionTransfer,
-        ThrottleControl,
+        BBPistonTraction, BBThrottleBrakeControl, PistonTraction, PistonTractionTransfer,
+        ThrottleBrakeControl,
     },
 };
 
 pub struct Traction {
     pub piston: PistonTraction,
     pub transfer: PistonTractionTransfer,
-    pub throttle_control: ThrottleControl,
+    pub throttle_control: ThrottleBrakeControl,
 }
 
 impl Default for Traction {
@@ -17,7 +17,7 @@ impl Default for Traction {
         Self {
             transfer: PistonTractionTransfer::new(0, 1),
             piston: PistonTraction::new(0, 1, 0.5),
-            throttle_control: ThrottleControl::new(0, 0.8),
+            throttle_control: ThrottleBrakeControl::new(0, 0.8),
         }
     }
 }
@@ -37,7 +37,7 @@ impl BackBoneTick<BBTraction> for Traction {
 #[derive(Default)]
 pub struct BBTraction {
     pub piston_traction: BBPistonTraction,
-    pub throttle_control: BBThrottleControl,
+    pub throttle_control: BBThrottleBrakeControl,
 }
 
 impl ElementTraitReset for BBTraction {

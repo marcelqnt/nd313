@@ -2,16 +2,18 @@ use lotus_extra::{
     backbone::{BackBoneTick, ElementTraitReset},
     cockpit::{Button, ButtonBehaviour},
     cockpit_enhanced::{
-        AutomaticGearBoxModeSwitchGroupSwitch, AutomaticGearBoxModeSwitchProperties, Cockpit,
-        IgnitionSwitchProperties, KeyPositions, VdvDashboard, automatic_gear_box_mode_switch,
+        AutomaticGearBoxModeSwitchGroupSwitch, AutomaticGearBoxModeSwitchProperties,
+        BBVdvDashboard, IgnitionSwitchProperties, KeyPositions, VdvBusType, VdvDashboard,
+        VdvDisplay, VdvDisplayProperties, VdvRampType, automatic_gear_box_mode_switch,
         ignition_switch,
     },
     input::InputEvent,
     messages::std::AutomaticGearboxMode,
+    road_vehicle::BBRoadVehiclePneumatics,
 };
 
 pub struct CockpitNd313 {
-    pub vdv_dashboard: VdvDashboard,
+    pub vdv_dashboard: VdvDashboard<BBRoadVehiclePneumatics>,
 }
 
 impl Default for CockpitNd313 {
@@ -71,17 +73,39 @@ impl Default for CockpitNd313 {
                         .behaviour(ButtonBehaviour::SpringLoaded)
                         .build(),
                 ])
+                .btn_display_change_mode(
+                    Button::builder()
+                        .input(InputEvent::new("DisplayChange", 0))
+                        .position(("Sw_Display_Pos".to_string(), 1.0))
+                        .sound_press("snd_StdTa_On")
+                        .sound_release("snd_StdTa_Off")
+                        .behaviour(ButtonBehaviour::SpringLoaded)
+                        .build(),
+                )
+                .btn_display_error(
+                    Button::builder()
+                        .input(InputEvent::new("DisplayDiagnose", 0))
+                        .position(("Sw_Display_Pos".to_string(), -1.0))
+                        .sound_press("snd_StdTa_On")
+                        .sound_release("snd_StdTa_Off")
+                        .behaviour(ButtonBehaviour::SpringLoaded)
+                        .build(),
+                )
+                .display(VdvDisplay::new(
+                    VdvDisplayProperties::builder()
+                        .texture_to_apply("TexID_CockpitDisplay")
+                        .bus_type(VdvBusType::ThreeAxlesThreeDoors)
+                        .ramp_type(VdvRampType::High)
+                        .illumination_var("DisplayIllumination".to_string())
+                        .build(),
+                ))
                 .build(),
         }
     }
 }
 
-impl BackBoneTick<Cockpit> for CockpitNd313 {
-    fn tick(&self, backbone: &mut Cockpit) {
+impl BackBoneTick<BBVdvDashboard<BBRoadVehiclePneumatics>> for CockpitNd313 {
+    fn tick(&self, backbone: &mut BBVdvDashboard<BBRoadVehiclePneumatics>) {
         self.vdv_dashboard.tick(backbone);
-
-        if let Some(door) = backbone.doors.get_mut(0) {
-            door.reset();
-        }
     }
 }

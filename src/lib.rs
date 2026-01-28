@@ -1,8 +1,11 @@
 use lotus_extra::{
-    backbone::BackBoneTick,
-    cockpit_enhanced::Cockpit,
+    backbone::{BackBoneTick, ElementTraitReset},
+    cockpit_enhanced::BBVdvDashboard,
     power::{BBPowerSupply, Battery, ElectricBus, PowerSupply},
-    road_vehicle::{AxleProperties, Steering, SteeringProperties},
+    road_vehicle::{
+        AxleProperties, BBRoadVehiclePneumatics, RoadVehiclePneumatics, Steering,
+        SteeringProperties,
+    },
 };
 use lotus_script::prelude::*;
 
@@ -15,11 +18,14 @@ mod cockpit;
 mod interface;
 mod traction;
 
+const WHEEL_DIAMETER: f32 = 0.9;
+
 pub struct MyScript {
     backbone: Backbone,
     steering: Steering,
     axle: AxleProperties,
     powersupply: PowerSupply,
+    pneumatics: RoadVehiclePneumatics,
     traction: Traction,
     cockpit: CockpitNd313,
     // test: Input,
@@ -30,7 +36,7 @@ impl Default for MyScript {
         Self {
             backbone: Backbone::default(),
             steering: Steering::new(SteeringProperties::builder().build()),
-            axle: AxleProperties::new(1, 1, 5.74, 0.9, "DiffGear_mps"),
+            axle: AxleProperties::new(1, 1, 5.74, WHEEL_DIAMETER, "DiffGear_mps"),
             powersupply: PowerSupply::builder()
                 .batteries(vec![Battery])
                 .buses(vec![
@@ -45,6 +51,9 @@ impl Default for MyScript {
                 ])
                 .build(),
 
+            pneumatics: RoadVehiclePneumatics::builder()
+                .wheel_diameter(WHEEL_DIAMETER)
+                .build(),
             cockpit: CockpitNd313::default(),
             traction: Traction::default(),
         }
@@ -74,6 +83,8 @@ impl Script for MyScript {
         self.axle.tick();
 
         self.steering.tick();
+
+        self.pneumatics.tick(&mut self.backbone.pneumatics);
 
         self.cockpit.tick(&mut self.backbone.cockpit);
         self.powersupply.tick(&mut self.backbone.powersupply);
@@ -106,7 +117,16 @@ impl MyScript {}
 
 #[derive(Default)]
 pub struct Backbone {
-    pub cockpit: Cockpit,
+    pub cockpit: BBVdvDashboard<BBRoadVehiclePneumatics>,
     pub powersupply: BBPowerSupply,
     pub traction: BBTraction,
+    pub pneumatics: BBRoadVehiclePneumatics,
+}
+
+impl ElementTraitReset for Backbone {
+    fn reset(&mut self) {
+        self.cockpit.reset();
+        self.powersupply.reset();
+        self.traction.reset();
+    }
 }
