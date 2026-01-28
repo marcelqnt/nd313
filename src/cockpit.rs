@@ -1,5 +1,5 @@
 use lotus_extra::{
-    backbone::{BackBoneTick, ElementTraitReset},
+    backbone::BackBoneTick,
     cockpit::{Button, ButtonBehaviour},
     cockpit_enhanced::{
         AutomaticGearBoxModeSwitchGroupSwitch, AutomaticGearBoxModeSwitchProperties,
