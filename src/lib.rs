@@ -7,8 +7,9 @@ use lotus_extra::{
         Steering, SteeringProperties, ThrottleBrakeControl,
     },
     traction::BBPistonTractionTransfer,
+    vehicle::Rattling,
 };
-use lotus_script::{prelude::*, vehicle::RoadWheel};
+use lotus_script::{Animation, prelude::*, vehicle::RoadWheel};
 
 use crate::{
     cockpit::CockpitNd313,
@@ -23,13 +24,15 @@ const WHEEL_DIAMETER: f32 = 0.9;
 
 pub struct MyScript {
     backbone: Backbone,
-    steering: Steering,
-    axles: Vec<AxleProperties>,
     powersupply: PowerSupply,
     pneumatics: RoadVehiclePneumatics,
     traction: Traction,
     throttle_brake_control: ThrottleBrakeControl,
     cockpit: CockpitNd313,
+
+    axles: Vec<AxleProperties>,
+    steering: Steering,
+    rattling: Rattling,
 
     _wheels: [RoadWheel; 2],
     // test: Input,
@@ -80,6 +83,10 @@ impl Default for MyScript {
             throttle_brake_control: ThrottleBrakeControl::new(0, 1, 0.85),
             cockpit: CockpitNd313::default(),
             traction: Traction::default(),
+            rattling: Rattling::builder()
+                .animation(Animation::get("Main").unwrap())
+                .sound_variable("snd_Rattling")
+                .build(),
         }
     }
 }
@@ -108,6 +115,8 @@ impl Script for MyScript {
 
         self.axles[1].tick();
         self.steering.tick();
+        self.rattling.tick();
+
         self.pneumatics.tick(&mut self.backbone.pneumatics);
         self.throttle_brake_control
             .tick(&mut self.backbone.throttle_brake_control);
