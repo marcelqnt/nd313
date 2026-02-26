@@ -1,5 +1,5 @@
 use lotus_extra::{
-    backbone::{BackBoneTick, ElementTraitResetInputOutput, ElementTraitResetType},
+    backbone::{BackBoneTick, ElementTrait, ElementTraitResetInputOutput, ElementTraitResetType},
     cockpit_enhanced::BBVdvDashboard,
     power::{BBPowerSupply, Battery, ElectricBus, PowerSupply},
     road_vehicle::{
@@ -41,15 +41,11 @@ pub struct MyScript {
 impl Default for MyScript {
     fn default() -> Self {
         let axles = vec![
-            AxleProperties::new(0, None, None, WHEEL_DIAMETER, None),
-            AxleProperties::new(
-                1,
-                Some(1),
-                Some(5.74),
-                WHEEL_DIAMETER,
-                Some("DiffGear_mps".to_string()),
-            ),
-            AxleProperties::new(2, None, None, WHEEL_DIAMETER, None),
+            AxleProperties::new(0, WHEEL_DIAMETER),
+            AxleProperties::new(1, WHEEL_DIAMETER)
+                .with_tacho("DiffGear_mps".to_string())
+                .with_traction(1, 5.74),
+            AxleProperties::new(2, WHEEL_DIAMETER),
         ];
 
         let pneumatics = RoadVehiclePneumatics::builder()
@@ -139,6 +135,10 @@ impl Script for MyScript {
         }
         if let Some(test) = self.backbone.powersupply.bus_active_refreshed(1) {
             set_var("Lm_MasterWarning", test as i8 as f32);
+        }
+
+        for axle in self.axles.iter_mut() {
+            axle.kneeling(self.backbone.cockpit.btn_doors.first().unwrap().get_state());
         }
     }
 
