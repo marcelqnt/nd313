@@ -22,29 +22,27 @@ impl MyScript {
     fn power_supply_output(&mut self) {
         if let Some(electricity_available) = self.backbone.powersupply.bus_active_refreshed(0) {
             self.backbone
-                .cockpit
-                .display
-                .electricity_available
-                .set(electricity_available);
+                .set_electricity_available(electricity_available);
         }
     }
 
     fn cockpit_output(&mut self) {
+        let backbone = &mut self.backbone;
+
         // Engine Start/Stop:
-        let input = match self.backbone.cockpit.ignition_switch.state.get_state().0 {
+        let input = match backbone.cockpit.ignition_switch.state.get_state().0 {
             IgnitionSwitchStep::Off | IgnitionSwitchStep::Step1 => EngineStartStop::Stop,
             IgnitionSwitchStep::Step2 => EngineStartStop::None,
             IgnitionSwitchStep::Starter => EngineStartStop::Start,
         };
         self.traction.piston.starter_relay(
-            &mut self.backbone.traction.piston_traction,
+            &mut backbone.traction.piston_traction,
             input,
-            self.backbone.powersupply.get_battery(0).unwrap(),
+            backbone.powersupply.get_battery(0).unwrap(),
         );
 
         // Gearbox Mode
-        if let Some((state, _)) = self
-            .backbone
+        if let Some((state, _)) = backbone
             .cockpit
             .automatic_gear_box_mode_switch_group
             .state
@@ -60,8 +58,8 @@ impl MyScript {
         }
 
         // Ignition Switch
-        let p = &mut self.backbone.powersupply;
-        if let Some((state, _)) = self.backbone.cockpit.ignition_switch.state.get_refreshed() {
+        let p = &mut backbone.powersupply;
+        if let Some((state, _)) = backbone.cockpit.ignition_switch.state.get_refreshed() {
             p.get_bus(0)
                 .unwrap()
                 .main_relay

@@ -161,6 +161,13 @@ pub struct Backbone {
     pub piston_traction_transfer: BBPistonTractionTransfer,
 }
 
+impl Backbone {
+    pub fn set_electricity_available(&mut self, electricity_available: bool) {
+        self.cockpit
+            .set_electricity_available(electricity_available);
+    }
+}
+
 impl ElementTraitResetInputOutput for Backbone {
     fn reset(&mut self, reset_type: ElementTraitResetType) {
         self.cockpit.reset(reset_type);
