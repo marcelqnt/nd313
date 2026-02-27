@@ -1,12 +1,14 @@
 use lotus_extra::{
-    backbone::{BackBoneTick, ElementTrait, ElementTraitResetInputOutput, ElementTraitResetType},
-    cockpit_enhanced::BBVdvDashboard,
-    power::{BBPowerSupply, Battery, ElectricBus, PowerSupply},
-    road_vehicle::{
-        AxleProperties, BBRoadVehiclePneumatics, BBThrottleBrakeControl, RoadVehiclePneumatics,
-        Steering, SteeringProperties, ThrottleBrakeControl,
+    bb_system::{
+        cockpit_enhanced::BBVdvDashboard,
+        power::{BBPowerSupply, Battery, ElectricBus, PowerSupply},
+        road_vehicle::{
+            AxleProperties, BBRoadVehiclePneumatics, BBThrottleBrakeControl, RoadVehiclePneumatics,
+            Steering, SteeringProperties, ThrottleBrakeControl,
+        },
+        traction::BBPistonTractionTransfer,
+        {BackBoneTick, ElementTrait, ElementTraitResetInputOutput, ElementTraitResetType},
     },
-    traction::BBPistonTractionTransfer,
     vehicle::Rattling,
 };
 use lotus_script::{Animation, prelude::*, vehicle::RoadWheel};

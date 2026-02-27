@@ -1,7 +1,6 @@
 use lotus_extra::{
-    backbone::ElementTrait,
-    cockpit_enhanced::IgnitionSwitchStep,
-    messages::{self, std::EngineStartStop},
+    bb_system::{ElementTrait, cockpit_enhanced::IgnitionSwitchStep},
+    messages::{self},
 };
 use lotus_script::{log, message};
 
@@ -13,7 +12,7 @@ impl MyScript {
 
         self.power_supply_output();
 
-        self.traction_pneumatics_tick();
+        self.traction_output();
         self.throttle_brake_control_output();
 
         self.pneumatics_output();
@@ -27,27 +26,19 @@ impl MyScript {
     }
 
     fn cockpit_output(&mut self) {
-        let backbone = &mut self.backbone;
+        let bb_traction = &mut self.backbone.traction;
+        let bb_powersupply = &mut self.backbone.powersupply;
+        let bb_cockpit = &mut self.backbone.cockpit;
 
         // Engine Start/Stop:
-        let input = match backbone.cockpit.ignition_switch.state.get_state().0 {
-            IgnitionSwitchStep::Off | IgnitionSwitchStep::Step1 => EngineStartStop::Stop,
-            IgnitionSwitchStep::Step2 => EngineStartStop::None,
-            IgnitionSwitchStep::Starter => EngineStartStop::Start,
-        };
         self.traction.piston.starter_relay(
-            &mut backbone.traction.piston_traction,
-            input,
-            backbone.powersupply.get_battery(0).unwrap(),
+            &mut bb_traction.piston_traction,
+            bb_cockpit.ignition_switch.state.get_state().0.into(),
+            bb_powersupply.get_battery(0).unwrap(),
         );
 
         // Gearbox Mode
-        if let Some((state, _)) = backbone
-            .cockpit
-            .automatic_gear_box_mode_switch_group
-            .state
-            .get_refreshed()
-        {
+        if let Some(state) = bb_cockpit.get_gearbox_mode() {
             log::info!("Automatic Gear Box Mode Switch Group State: {:?}", state);
             self.traction.piston.send_gearbox_mode(&state);
 
@@ -58,16 +49,9 @@ impl MyScript {
         }
 
         // Ignition Switch
-        let p = &mut backbone.powersupply;
-        if let Some((state, _)) = backbone.cockpit.ignition_switch.state.get_refreshed() {
-            p.get_bus(0)
-                .unwrap()
-                .main_relay
-                .set(state >= IgnitionSwitchStep::Step1);
-            p.get_bus(1)
-                .unwrap()
-                .main_relay
-                .set(state >= IgnitionSwitchStep::Step2);
+        if let Some((state, _)) = bb_cockpit.ignition_switch.state.get_refreshed() {
+            bb_powersupply.set_main_relay(0, state >= IgnitionSwitchStep::Step1);
+            bb_powersupply.set_main_relay(1, state >= IgnitionSwitchStep::Step2);
         }
     }
 
@@ -80,7 +64,7 @@ impl MyScript {
             self.backbone.throttle_brake_control.brake_value.get_state();
     }
 
-    fn traction_pneumatics_tick(&mut self) {
+    fn traction_output(&mut self) {
         self.backbone.pneumatics.n_engine_rpm = self.backbone.piston_traction_transfer.rpm;
     }
 

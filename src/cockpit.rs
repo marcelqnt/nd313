@@ -1,15 +1,17 @@
 use lotus_extra::{
-    backbone::BackBoneTick,
-    cockpit::{Button, ButtonBehaviour},
-    cockpit_enhanced::{
-        AutomaticGearBoxModeSwitchGroupSwitch, AutomaticGearBoxModeSwitchProperties,
-        BBVdvDashboard, IgnitionSwitchProperties, KeyPositions, VdvBusType, VdvDashboard,
-        VdvDisplay, VdvDisplayProperties, VdvRampType, automatic_gear_box_mode_switch,
-        ignition_switch,
+    bb_system::{
+        BackBoneTick,
+        cockpit::{Button, ButtonBehaviour},
+        cockpit_enhanced::{
+            AutomaticGearBoxModeSwitchGroupSwitch, AutomaticGearBoxModeSwitchProperties,
+            BBVdvDashboard, IgnitionSwitchProperties, KeyPositions, VdvBusType, VdvDashboard,
+            VdvDisplay, VdvDisplayProperties, VdvRampType, automatic_gear_box_mode_switch,
+            ignition_switch,
+        },
+        road_vehicle::BBRoadVehiclePneumatics,
     },
     input::InputEvent,
     messages::std::AutomaticGearboxMode,
-    road_vehicle::BBRoadVehiclePneumatics,
 };
 
 pub struct CockpitNd313 {

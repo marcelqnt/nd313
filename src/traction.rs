@@ -1,8 +1,8 @@
-use lotus_extra::{
-    backbone::{BackBoneTick, ElementTraitResetInputOutput, ElementTraitResetType},
+use lotus_extra::bb_system::{
     traction::{
         BBPistonTraction, BBPistonTractionTransfer, PistonTraction, PistonTractionTransfer,
     },
+    {BackBoneTick, ElementTraitResetInputOutput, ElementTraitResetType},
 };
 
 pub struct Traction {
