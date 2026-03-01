@@ -1,5 +1,7 @@
 use lotus_extra::{
-    bb_system::{ElementTrait, cockpit_enhanced::IgnitionSwitchStep},
+    bb_system::{
+        basic::ElementTrait, cockpit_enhanced::IgnitionSwitchStep, lights::IndicatorState,
+    },
     messages::{self},
 };
 use lotus_script::{log, message};
@@ -8,31 +10,40 @@ use crate::MyScript;
 
 impl MyScript {
     pub fn tick_interface(&mut self) {
-        self.cockpit_output();
+        self.powersupply_in();
 
-        self.power_supply_output();
+        self.pneumatics_in();
 
-        self.traction_output();
-        self.throttle_brake_control_output();
+        self.traction_in();
 
-        self.pneumatics_output();
+        self.outsidelights_in();
+
+        self.cockpit_in();
     }
 
-    fn power_supply_output(&mut self) {
-        if let Some(electricity_available) = self.backbone.powersupply.bus_active_refreshed(0) {
-            self.backbone
-                .set_electricity_available(electricity_available);
+    fn powersupply_in(&mut self) {
+        let bb_powersupply = &mut self.backbone.powersupply;
+
+        if let Some((state, _)) = self.backbone.cockpit.ignition_switch.state.get_refreshed() {
+            bb_powersupply.set_main_relay(0, state >= IgnitionSwitchStep::Step1);
+            bb_powersupply.set_main_relay(1, state >= IgnitionSwitchStep::Step2);
         }
     }
 
-    fn cockpit_output(&mut self) {
-        let bb_traction = &mut self.backbone.traction;
-        let bb_powersupply = &mut self.backbone.powersupply;
+    fn pneumatics_in(&mut self) {
+        self.backbone.pneumatics.n_engine_rpm = self.backbone.piston_traction_transfer.rpm;
+
+        self.backbone.pneumatics.target_air_brake =
+            self.backbone.throttle_brake_control.brake_value.get_state();
+    }
+
+    fn traction_in(&mut self) {
         let bb_cockpit = &mut self.backbone.cockpit;
+        let bb_powersupply = &mut self.backbone.powersupply;
 
         // Engine Start/Stop:
         self.traction.piston.starter_relay(
-            &mut bb_traction.piston_traction,
+            &mut self.backbone.traction.piston_traction,
             bb_cockpit.ignition_switch.state.get_state().0.into(),
             bb_powersupply.get_battery(0).unwrap(),
         );
@@ -47,25 +58,36 @@ impl MyScript {
             //     .automatic_gear_box_mode_switch_group
             //     .reset();
         }
+    }
 
-        // Ignition Switch
-        if let Some((state, _)) = bb_cockpit.ignition_switch.state.get_refreshed() {
-            bb_powersupply.set_main_relay(0, state >= IgnitionSwitchStep::Step1);
-            bb_powersupply.set_main_relay(1, state >= IgnitionSwitchStep::Step2);
+    fn outsidelights_in(&mut self) {
+        let bb_cockpit = &mut self.backbone.cockpit;
+        let bb_outside_lights = &mut self.backbone.outside_lights;
+        let bus_2 = self.backbone.powersupply.bus_active(1);
+
+        bb_outside_lights.input.voltage = self
+            .backbone
+            .powersupply
+            .get_bus(1)
+            .unwrap()
+            .voltage_available;
+
+        if !bus_2 {
+            bb_outside_lights.input.indicator = IndicatorState::Off;
+        } else {
+            bb_outside_lights.input.indicator =
+                bb_cockpit.indicator_switch.state.get_state().0.into();
         }
     }
 
-    fn pneumatics_output(&mut self) {
-        self.backbone.cockpit.pneumatics = self.backbone.pneumatics;
-    }
+    fn cockpit_in(&mut self) {
+        let bb_cockpit = &mut self.backbone.cockpit;
 
-    fn throttle_brake_control_output(&mut self) {
-        self.backbone.pneumatics.target_air_brake =
-            self.backbone.throttle_brake_control.brake_value.get_state();
-    }
+        if let Some(electricity_available) = self.backbone.powersupply.bus_active_refreshed(0) {
+            bb_cockpit.set_electricity_available(electricity_available);
+        }
 
-    fn traction_output(&mut self) {
-        self.backbone.pneumatics.n_engine_rpm = self.backbone.piston_traction_transfer.rpm;
+        bb_cockpit.pneumatics = self.backbone.pneumatics;
     }
 
     pub fn interface_on_message(&mut self, msg: &message::Message) {

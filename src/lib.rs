@@ -1,13 +1,15 @@
 use lotus_extra::{
     bb_system::{
-        cockpit_enhanced::BBVdvDashboard,
+        self,
+        basic::{BackBoneTick, ElementTrait, ElementTraitResetInputOutput, ElementTraitResetType},
+        lights::{BBOutsideLights, IndicatorLights, OutsideLights},
+        piston_traction::BBPistonTractionTransfer,
         power::{BBPowerSupply, Battery, ElectricBus, PowerSupply},
         road_vehicle::{
             AxleProperties, BBRoadVehiclePneumatics, BBThrottleBrakeControl, RoadVehiclePneumatics,
             Steering, SteeringProperties, ThrottleBrakeControl,
         },
-        traction::BBPistonTractionTransfer,
-        {BackBoneTick, ElementTrait, ElementTraitResetInputOutput, ElementTraitResetType},
+        vdv_dashboard::BBVdvDashboard,
     },
     vehicle::Rattling,
 };
@@ -30,6 +32,7 @@ pub struct MyScript {
     pneumatics: RoadVehiclePneumatics,
     traction: Traction,
     throttle_brake_control: ThrottleBrakeControl,
+    outside_lights: OutsideLights,
     cockpit: CockpitNd313,
 
     axles: Vec<AxleProperties>,
@@ -79,6 +82,34 @@ impl Default for MyScript {
 
             pneumatics,
             throttle_brake_control: ThrottleBrakeControl::new(0, 1, 0.85),
+            outside_lights: OutsideLights::builder()
+                .indicator(
+                    IndicatorLights::new(
+                        vec![
+                            bb_system::lights::Light::builder()
+                                .variable("Light_Indicator_Left".to_string())
+                                .exp_fade_in_out((20.0, 15.0))
+                                .build(),
+                            bb_system::lights::Light::builder()
+                                .variable("Light_Indicator_Left_LED".to_string())
+                                .build(),
+                        ],
+                        vec![
+                            bb_system::lights::Light::builder()
+                                .variable("Light_Indicator_Right".to_string())
+                                .exp_fade_in_out((20.0, 15.0))
+                                .build(),
+                            bb_system::lights::Light::builder()
+                                .variable("Light_Indicator_Right_LED".to_string())
+                                .build(),
+                        ],
+                        0.40,
+                        0.35,
+                        0.43,
+                    )
+                    .with_sound("snd_IndicatorRelayOn", "snd_IndicatorRelayOff"),
+                )
+                .build(),
             cockpit: CockpitNd313::default(),
             traction: Traction::default(),
             rattling: Rattling::builder()
@@ -121,6 +152,7 @@ impl Script for MyScript {
         self.cockpit.tick(&mut self.backbone.cockpit);
         self.powersupply.tick(&mut self.backbone.powersupply);
         self.traction.tick(&mut self.backbone.traction);
+        self.outside_lights.tick(&mut self.backbone.outside_lights);
 
         self.backbone.reset(ElementTraitResetType::Input);
 
@@ -161,13 +193,7 @@ pub struct Backbone {
     pub pneumatics: BBRoadVehiclePneumatics,
     pub throttle_brake_control: BBThrottleBrakeControl,
     pub piston_traction_transfer: BBPistonTractionTransfer,
-}
-
-impl Backbone {
-    pub fn set_electricity_available(&mut self, electricity_available: bool) {
-        self.cockpit
-            .set_electricity_available(electricity_available);
-    }
+    pub outside_lights: BBOutsideLights,
 }
 
 impl ElementTraitResetInputOutput for Backbone {
@@ -176,5 +202,6 @@ impl ElementTraitResetInputOutput for Backbone {
         self.powersupply.reset(reset_type);
         self.traction.reset(reset_type);
         self.throttle_brake_control.reset(reset_type);
+        self.outside_lights.reset(reset_type);
     }
 }

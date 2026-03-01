@@ -1,14 +1,16 @@
 use lotus_extra::{
     bb_system::{
-        BackBoneTick,
+        basic::BackBoneTick,
         cockpit::{Button, ButtonBehaviour},
         cockpit_enhanced::{
             AutomaticGearBoxModeSwitchGroupSwitch, AutomaticGearBoxModeSwitchProperties,
-            BBVdvDashboard, IgnitionSwitchProperties, KeyPositions, VdvBusType, VdvDashboard,
-            VdvDisplay, VdvDisplayProperties, VdvRampType, automatic_gear_box_mode_switch,
-            ignition_switch,
+            IgnitionSwitchProperties, IndicatorSwitchProperties, KeyPositions,
+            automatic_gear_box_mode_switch, ignition_switch, indicator_switch,
         },
         road_vehicle::BBRoadVehiclePneumatics,
+        vdv_dashboard::{
+            BBVdvDashboard, VdvBusType, VdvDashboard, VdvDisplay, VdvDisplayProperties, VdvRampType,
+        },
     },
     input::InputEvent,
     messages::std::AutomaticGearboxMode,
@@ -64,6 +66,13 @@ impl Default for CockpitNd313 {
                                 .position(("Sw_GearBoxMode_D_Pos".to_string(), 1.0))
                                 .build(),
                         ])
+                        .build(),
+                ))
+                .indicator_switch(indicator_switch(
+                    IndicatorSwitchProperties::builder()
+                        .position_var("Sw_Indicator_Pos")
+                        .sound_set("snd_Sw_Indicator_On")
+                        .sound_release("snd_Sw_Indicator_Off")
                         .build(),
                 ))
                 .btn_doors(vec![
