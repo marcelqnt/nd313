@@ -4,8 +4,8 @@ use lotus_extra::{
         cockpit::{Button, ButtonBehaviour},
         cockpit_enhanced::{
             AutomaticGearBoxModeSwitchGroupSwitch, AutomaticGearBoxModeSwitchProperties,
-            IgnitionSwitchProperties, IndicatorSwitchProperties, KeyPositions,
-            automatic_gear_box_mode_switch, ignition_switch, indicator_switch,
+            IgnitionSwitchProperties, IndicatorSwitch, IndicatorSwitchProperties, KeyPositions,
+            automatic_gear_box_mode_switch, ignition_switch,
         },
         road_vehicle::BBRoadVehiclePneumatics,
         vdv_dashboard::{
@@ -23,94 +23,87 @@ pub struct CockpitNd313 {
 impl Default for CockpitNd313 {
     fn default() -> Self {
         Self {
-            vdv_dashboard: VdvDashboard::builder()
-                .ignition_key(
-                    Button::builder()
-                        .visibility_change("Key_Inserted")
-                        .input(InputEvent::new("InsertKey_Main", 0))
-                        .sound_press("snd_KeyMain_Insert")
-                        .sound_release("snd_KeyMain_Pull")
-                        .behaviour(ButtonBehaviour::OnOff)
-                        .build(),
+            vdv_dashboard: VdvDashboard::default()
+                .add_ignition_key(
+                    Button::new(ButtonBehaviour::OnOff)
+                        .with_visibility_change("Key_Inserted")
+                        .with_input(InputEvent::new("InsertKey_Main", 0))
+                        .with_sound_press("snd_KeyMain_Insert")
+                        .with_sound_release("snd_KeyMain_Pull"),
                 )
-                .ignition_switch(ignition_switch(
-                    IgnitionSwitchProperties::builder()
-                        .key_position_var("Key_Rotation")
-                        .key_positions(KeyPositions {
-                            off: 2.0,
-                            step1: 1.0,
-                            step2: 0.0,
-                            starter: -1.0,
-                        })
-                        .sound("snd_KeyLock_Main")
-                        .build(),
+                .add_ignition_switch(ignition_switch(IgnitionSwitchProperties::new(
+                    "Key_Rotation",
+                    KeyPositions {
+                        off: 2.0,
+                        step1: 1.0,
+                        step2: 0.0,
+                        starter: -1.0,
+                    },
+                    "snd_KeyLock_Main",
+                )))
+                .add_automatic_gear_box_mode_switch_group(automatic_gear_box_mode_switch(
+                    AutomaticGearBoxModeSwitchProperties::new(
+                        "snd_Sw_GearBox",
+                        "snd_Sw_GearBox",
+                        vec![
+                            AutomaticGearBoxModeSwitchGroupSwitch::new(
+                                AutomaticGearboxMode::Reverse,
+                                InputEvent::new("Bus.GearBoxMode_R", 0),
+                                ("Sw_GearBoxMode_R_Pos".to_string(), 1.0),
+                            ),
+                            AutomaticGearBoxModeSwitchGroupSwitch::new(
+                                AutomaticGearboxMode::Neutral,
+                                InputEvent::new("Bus.GearBoxMode_N", 0),
+                                ("Sw_GearBoxMode_N_Pos".to_string(), 1.0),
+                            ),
+                            AutomaticGearBoxModeSwitchGroupSwitch::new(
+                                AutomaticGearboxMode::Drive,
+                                InputEvent::new("Bus.GearBoxMode_D", 0),
+                                ("Sw_GearBoxMode_D_Pos".to_string(), 1.0),
+                            ),
+                        ],
+                    ),
                 ))
-                .automatic_gear_box_mode_switch_group(automatic_gear_box_mode_switch(
-                    AutomaticGearBoxModeSwitchProperties::builder()
-                        .sound_press_gear("snd_Sw_GearBox")
-                        .sound_press_neutral("snd_Sw_GearBox")
-                        .switches(vec![
-                            AutomaticGearBoxModeSwitchGroupSwitch::builder()
-                                .mode(AutomaticGearboxMode::Reverse)
-                                .input(InputEvent::new("Bus.GearBoxMode_R", 0))
-                                .position(("Sw_GearBoxMode_R_Pos".to_string(), 1.0))
-                                .build(),
-                            AutomaticGearBoxModeSwitchGroupSwitch::builder()
-                                .mode(AutomaticGearboxMode::Neutral)
-                                .input(InputEvent::new("Bus.GearBoxMode_N", 0))
-                                .position(("Sw_GearBoxMode_N_Pos".to_string(), 1.0))
-                                .build(),
-                            AutomaticGearBoxModeSwitchGroupSwitch::builder()
-                                .mode(AutomaticGearboxMode::Drive)
-                                .input(InputEvent::new("Bus.GearBoxMode_D", 0))
-                                .position(("Sw_GearBoxMode_D_Pos".to_string(), 1.0))
-                                .build(),
-                        ])
-                        .build(),
+                .add_indicator_switch(IndicatorSwitch::new(
+                    IndicatorSwitchProperties::new(
+                        "Sw_Indicator_Pos",
+                        "snd_Sw_Indicator_On",
+                        "snd_Sw_Indicator_Off",
+                    )
+                    .with_automatic_off(
+                        "snd_Sw_Indicator_Autooff",
+                        "snd_Sw_Indicator_Autooff_Notch",
+                        810.0,
+                        30.0,
+                    ),
                 ))
-                .indicator_switch(indicator_switch(
-                    IndicatorSwitchProperties::builder()
-                        .position_var("Sw_Indicator_Pos")
-                        .sound_set("snd_Sw_Indicator_On")
-                        .sound_release("snd_Sw_Indicator_Off")
-                        .build(),
-                ))
-                .btn_doors(vec![
-                    Button::builder()
-                        .input(InputEvent::new("Door1Toggle", 0))
-                        .position(("Btn_Door1_Pos".to_string(), 1.0))
-                        .sound_press("snd_Btn_Door1_Press")
-                        .sound_release("snd_Btn_Door1_Release")
-                        .behaviour(ButtonBehaviour::SpringLoaded)
-                        .build(),
-                ])
-                .btn_display_change_mode(
-                    Button::builder()
-                        .input(InputEvent::new("DisplayChange", 0))
-                        .position(("Sw_Display_Pos".to_string(), 1.0))
-                        .sound_press("snd_StdTa_On")
-                        .sound_release("snd_StdTa_Off")
-                        .behaviour(ButtonBehaviour::SpringLoaded)
-                        .build(),
+                .add_btn_door(
+                    Button::new(ButtonBehaviour::SpringLoaded)
+                        .with_input(InputEvent::new("Door1Toggle", 0))
+                        .with_position_var(("Btn_Door1_Pos".to_string(), 1.0))
+                        .with_sound_press("snd_Btn_Door1_Press")
+                        .with_sound_release("snd_Btn_Door1_Release"),
                 )
-                .btn_display_error(
-                    Button::builder()
-                        .input(InputEvent::new("DisplayDiagnose", 0))
-                        .position(("Sw_Display_Pos".to_string(), -1.0))
-                        .sound_press("snd_StdTa_On")
-                        .sound_release("snd_StdTa_Off")
-                        .behaviour(ButtonBehaviour::SpringLoaded)
-                        .build(),
+                .add_btn_display_change_mode(
+                    Button::new(ButtonBehaviour::SpringLoaded)
+                        .with_input(InputEvent::new("DisplayChange", 0))
+                        .with_position_var(("Sw_Display_Pos".to_string(), 1.0))
+                        .with_sound_press("snd_StdTa_On")
+                        .with_sound_release("snd_StdTa_Off"),
                 )
-                .display(VdvDisplay::new(
-                    VdvDisplayProperties::builder()
-                        .texture_to_apply("TexID_CockpitDisplay")
-                        .bus_type(VdvBusType::ThreeAxlesThreeDoors)
-                        .ramp_type(VdvRampType::High)
-                        .illumination_var("DisplayIllumination".to_string())
-                        .build(),
-                ))
-                .build(),
+                .add_btn_display_error(
+                    Button::new(ButtonBehaviour::SpringLoaded)
+                        .with_input(InputEvent::new("DisplayDiagnose", 0))
+                        .with_position_var(("Sw_Display_Pos".to_string(), -1.0))
+                        .with_sound_press("snd_StdTa_On")
+                        .with_sound_release("snd_StdTa_Off"),
+                )
+                .add_display(VdvDisplay::new(VdvDisplayProperties::new(
+                    VdvBusType::ThreeAxlesThreeDoors,
+                    VdvRampType::High,
+                    "DisplayIllumination".to_string(),
+                    "TexID_CockpitDisplay".to_string(),
+                ))),
         }
     }
 }

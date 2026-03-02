@@ -6,8 +6,8 @@ use lotus_extra::{
         piston_traction::BBPistonTractionTransfer,
         power::{BBPowerSupply, Battery, ElectricBus, PowerSupply},
         road_vehicle::{
-            AxleProperties, BBRoadVehiclePneumatics, BBThrottleBrakeControl, RoadVehiclePneumatics,
-            Steering, SteeringProperties, ThrottleBrakeControl,
+            AxleProperties, BBRoadVehiclePneumatics, BBSteering, BBThrottleBrakeControl,
+            RoadVehiclePneumatics, Steering, SteeringProperties, ThrottleBrakeControl,
         },
         vdv_dashboard::BBVdvDashboard,
     },
@@ -60,56 +60,36 @@ impl Default for MyScript {
         Self {
             _wheels: [RoadWheel::get(1, 0).unwrap(), RoadWheel::get(1, 1).unwrap()],
             backbone: Backbone::default(),
-            steering: Steering::new(
-                SteeringProperties::builder()
-                    .max_wheel_angle_deg(40.0)
-                    .build(),
-            ),
+            steering: Steering::new(SteeringProperties::new(40.0)),
             axles,
-            powersupply: PowerSupply::builder()
-                .batteries(vec![Battery])
-                .buses(vec![
-                    ElectricBus::builder()
-                        .batteries(vec![0])
-                        .min_voltage(0.75)
-                        .build(),
-                    ElectricBus::builder()
-                        .batteries(vec![0])
-                        .min_voltage(0.75)
-                        .build(),
-                ])
-                .build(),
+            powersupply: PowerSupply::new(
+                vec![Battery],
+                vec![
+                    ElectricBus::new(vec![0], 0.75),
+                    ElectricBus::new(vec![0], 0.75),
+                ],
+            ),
 
             pneumatics,
             throttle_brake_control: ThrottleBrakeControl::new(0, 1, 0.85),
-            outside_lights: OutsideLights::builder()
-                .indicator(
-                    IndicatorLights::new(
-                        vec![
-                            bb_system::lights::Light::builder()
-                                .variable("Light_Indicator_Left".to_string())
-                                .exp_fade_in_out((20.0, 15.0))
-                                .build(),
-                            bb_system::lights::Light::builder()
-                                .variable("Light_Indicator_Left_LED".to_string())
-                                .build(),
-                        ],
-                        vec![
-                            bb_system::lights::Light::builder()
-                                .variable("Light_Indicator_Right".to_string())
-                                .exp_fade_in_out((20.0, 15.0))
-                                .build(),
-                            bb_system::lights::Light::builder()
-                                .variable("Light_Indicator_Right_LED".to_string())
-                                .build(),
-                        ],
-                        0.40,
-                        0.35,
-                        0.43,
-                    )
-                    .with_sound("snd_IndicatorRelayOn", "snd_IndicatorRelayOff"),
+            outside_lights: OutsideLights::default().with_indicator(
+                IndicatorLights::new(
+                    vec![
+                        bb_system::lights::Light::new("Light_Indicator_Left".to_string())
+                            .with_exp_fade_in_out((20.0, 15.0)),
+                        bb_system::lights::Light::new("Light_Indicator_Left_LED".to_string()),
+                    ],
+                    vec![
+                        bb_system::lights::Light::new("Light_Indicator_Right".to_string())
+                            .with_exp_fade_in_out((20.0, 15.0)),
+                        bb_system::lights::Light::new("Light_Indicator_Right_LED".to_string()),
+                    ],
+                    0.40,
+                    0.35,
+                    0.43,
                 )
-                .build(),
+                .with_sound("snd_IndicatorRelayOn", "snd_IndicatorRelayOff"),
+            ),
             cockpit: CockpitNd313::default(),
             traction: Traction::default(),
             rattling: Rattling::builder()
@@ -143,12 +123,12 @@ impl Script for MyScript {
         self.backbone.reset(ElementTraitResetType::Output);
 
         self.axles[1].tick();
-        self.steering.tick();
         self.rattling.tick();
 
         self.pneumatics.tick(&mut self.backbone.pneumatics);
         self.throttle_brake_control
             .tick(&mut self.backbone.throttle_brake_control);
+        self.steering.tick(&mut self.backbone.steering);
         self.cockpit.tick(&mut self.backbone.cockpit);
         self.powersupply.tick(&mut self.backbone.powersupply);
         self.traction.tick(&mut self.backbone.traction);
@@ -187,11 +167,12 @@ impl Script for MyScript {
 
 #[derive(Default)]
 pub struct Backbone {
+    pub pneumatics: BBRoadVehiclePneumatics,
+    pub throttle_brake_control: BBThrottleBrakeControl,
+    pub steering: BBSteering,
     pub cockpit: BBVdvDashboard<BBRoadVehiclePneumatics>,
     pub powersupply: BBPowerSupply,
     pub traction: BBTraction,
-    pub pneumatics: BBRoadVehiclePneumatics,
-    pub throttle_brake_control: BBThrottleBrakeControl,
     pub piston_traction_transfer: BBPistonTractionTransfer,
     pub outside_lights: BBOutsideLights,
 }

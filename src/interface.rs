@@ -24,7 +24,7 @@ impl MyScript {
     fn powersupply_in(&mut self) {
         let bb_powersupply = &mut self.backbone.powersupply;
 
-        if let Some((state, _)) = self.backbone.cockpit.ignition_switch.state.get_refreshed() {
+        if let Some(state) = self.backbone.cockpit.ignition_switch.state.get_refreshed() {
             bb_powersupply.set_main_relay(0, state >= IgnitionSwitchStep::Step1);
             bb_powersupply.set_main_relay(1, state >= IgnitionSwitchStep::Step2);
         }
@@ -44,7 +44,7 @@ impl MyScript {
         // Engine Start/Stop:
         self.traction.piston.starter_relay(
             &mut self.backbone.traction.piston_traction,
-            bb_cockpit.ignition_switch.state.get_state().0.into(),
+            bb_cockpit.ignition_switch.state.get_state().into(),
             bb_powersupply.get_battery(0).unwrap(),
         );
 
@@ -75,8 +75,7 @@ impl MyScript {
         if !bus_2 {
             bb_outside_lights.input.indicator = IndicatorState::Off;
         } else {
-            bb_outside_lights.input.indicator =
-                bb_cockpit.indicator_switch.state.get_state().0.into();
+            bb_outside_lights.input.indicator = bb_cockpit.indicator_switch.get_state().into();
         }
     }
 
@@ -88,6 +87,10 @@ impl MyScript {
         }
 
         bb_cockpit.pneumatics = self.backbone.pneumatics;
+
+        bb_cockpit
+            .indicator_switch
+            .set_steering_normalized(self.backbone.steering.angle_normalized);
     }
 
     pub fn interface_on_message(&mut self, msg: &message::Message) {
