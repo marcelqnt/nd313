@@ -1,16 +1,16 @@
 use lotus_extra::{
     bb_system::{
-        basic::BackBoneTick,
+        basic::ModuleTick,
         cockpit::{Button, ButtonBehaviour},
         cockpit_enhanced::{
             AutomaticGearBoxModeSwitchGroupSwitch, AutomaticGearBoxModeSwitchProperties,
             IgnitionSwitchProperties, IndicatorSwitch, IndicatorSwitchProperties, KeyPositions,
+            ModernOutsideLightSwitch, ModernOutsideLightSwitchProperties,
             automatic_gear_box_mode_switch, ignition_switch,
         },
         road_vehicle::BBRoadVehiclePneumatics,
-        vdv_dashboard::{
-            BBVdvDashboard, VdvBusType, VdvDashboard, VdvDisplay, VdvDisplayProperties, VdvRampType,
-        },
+        vdv_dashboard::{BBVdvDashboard, VdvDashboard},
+        vdv_display::{VdvBusType, VdvDisplay, VdvDisplayProperties, VdvRampType},
     },
     input::InputEvent,
     messages::std::AutomaticGearboxMode,
@@ -77,12 +77,24 @@ impl Default for CockpitNd313 {
                         30.0,
                     ),
                 ))
+                .add_outside_light_switch(ModernOutsideLightSwitch::new(
+                    ModernOutsideLightSwitchProperties::new("Sw_Light_Pos", "snd_Sw_Light"),
+                ))
                 .add_btn_door(
                     Button::new(ButtonBehaviour::SpringLoaded)
                         .with_input(InputEvent::new("Door1Toggle", 0))
                         .with_position_var(("Btn_Door1_Pos".to_string(), 1.0))
                         .with_sound_press("snd_Btn_Door1_Press")
                         .with_sound_release("snd_Btn_Door1_Release"),
+                )
+                .add_btn_door_release(
+                    Button::new(ButtonBehaviour::OnOff)
+                        .with_input(InputEvent::new("DoorReleaseToggle", 0))
+                        .with_input_set_on(InputEvent::new("DoorReleaseOn", 0))
+                        .with_input_set_off(InputEvent::new("DoorReleaseOff", 0))
+                        .with_position_var(("Sw_DoorRelease_Pos".to_string(), 1.0))
+                        .with_sound_press("snd_StdSw_On")
+                        .with_sound_release("snd_StdSw_Off"),
                 )
                 .add_btn_display_change_mode(
                     Button::new(ButtonBehaviour::SpringLoaded)
@@ -108,7 +120,7 @@ impl Default for CockpitNd313 {
     }
 }
 
-impl BackBoneTick<BBVdvDashboard<BBRoadVehiclePneumatics>> for CockpitNd313 {
+impl ModuleTick<BBVdvDashboard<BBRoadVehiclePneumatics>> for CockpitNd313 {
     fn tick(&self, backbone: &mut BBVdvDashboard<BBRoadVehiclePneumatics>) {
         self.vdv_dashboard.tick(backbone);
     }

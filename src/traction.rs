@@ -1,5 +1,5 @@
 use lotus_extra::bb_system::{
-    basic::{BackBoneTick, ElementTraitResetInputOutput, ElementTraitResetType},
+    basic::{BBModuleResetInputOutput, BBModuleResetType, ModuleTick},
     piston_traction::{
         BBPistonTraction, BBPistonTractionTransfer, PistonTraction, PistonTractionTransfer,
     },
@@ -29,7 +29,7 @@ impl Traction {
     }
 }
 
-impl BackBoneTick<BBTraction> for Traction {
+impl ModuleTick<BBTraction> for Traction {
     fn tick(&self, _: &mut BBTraction) {}
 }
 
@@ -38,8 +38,8 @@ pub struct BBTraction {
     pub piston_traction: BBPistonTraction,
 }
 
-impl ElementTraitResetInputOutput for BBTraction {
-    fn reset(&mut self, reset_type: ElementTraitResetType) {
+impl BBModuleResetInputOutput for BBTraction {
+    fn reset(&mut self, reset_type: BBModuleResetType) {
         self.piston_traction.reset(reset_type);
     }
 }
