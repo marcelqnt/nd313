@@ -1,6 +1,6 @@
 use lotus_extra::{
     bb_system::{
-        basic::{BBModule, BBModuleForwarding, BBSimple},
+        basic::{BackBone, BackBoneForwarding},
         cockpit_enhanced::IgnitionSwitchStep,
         lights::{IndicatorState, OutsideLightKind},
     },
@@ -157,6 +157,7 @@ impl MyScript {
             && pos
         {
             self.doors.toggle_door(bb_doors, 0);
+            self.doors.toggle_door(bb_doors, 1);
         }
     }
 

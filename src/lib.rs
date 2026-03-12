@@ -1,7 +1,7 @@
 use lotus_extra::{
     bb_system::{
         self,
-        basic::{BBModule, BBModuleResetInputOutput, BBModuleResetType, ModuleTick},
+        basic::{BackBone, BackBoneResetInputOutput, BackBoneResetType, ModuleTick},
         doors::{BBDoors, DoorRelease, DoorUnit, Doors, PneumaticDoor, StopBrakeController},
         lights::{
             BBOutsideLights, Bulb, IndicatorLights, OutsideLightKind, OutsideLights, StandardLight,
@@ -132,9 +132,25 @@ impl Default for MyScript {
                         },
                         (0.1, 0.1),
                     )
+                    .with_friction(0.1)
                     .with_position_var("Door_1_1_Pos".to_string())
                     .with_sound_open("snd_Door11_Open")
                     .with_sound_close("snd_Door11_Close"),
+                    Some(0),
+                ))
+                .add_door(DoorUnit::new(
+                    PneumaticDoor::new(
+                        0.000_003,
+                        bb_system::doors::PneumaticDoorPressureRate::Linear {
+                            rate: 0.000_000_5,
+                            p_end_normalized: 0.21,
+                        },
+                        (0.105, 0.09),
+                    )
+                    .with_friction(0.11)
+                    .with_position_var("Door_1_2_Pos".to_string())
+                    .with_sound_open("snd_Door12_Open")
+                    .with_sound_close("snd_Door12_Close"),
                     Some(0),
                 )),
             traction: Traction::default(),
@@ -166,7 +182,7 @@ impl Script for MyScript {
 
         // tick is only necessary for the axle with traction
 
-        self.backbone.reset(BBModuleResetType::Output);
+        self.backbone.reset(BackBoneResetType::Output);
 
         self.axles[1].tick();
         self.rattling.tick();
@@ -181,7 +197,7 @@ impl Script for MyScript {
         self.outside_lights.tick(&mut self.backbone.outside_lights);
         self.doors.tick(&mut self.backbone.doors);
 
-        self.backbone.reset(BBModuleResetType::Input);
+        self.backbone.reset(BackBoneResetType::Input);
 
         self.tick_interface();
 
@@ -221,8 +237,8 @@ pub struct Backbone {
     pub doors: BBDoors,
 }
 
-impl BBModuleResetInputOutput for Backbone {
-    fn reset(&mut self, reset_type: BBModuleResetType) {
+impl BackBoneResetInputOutput for Backbone {
+    fn reset(&mut self, reset_type: BackBoneResetType) {
         self.cockpit.reset(reset_type);
         self.powersupply.reset(reset_type);
         self.traction.reset(reset_type);

@@ -4,9 +4,7 @@ use lotus_extra::{
         cockpit::{Button, ButtonBehaviour},
         cockpit_enhanced::{
             AutomaticGearBoxModeSwitchGroupSwitch, AutomaticGearBoxModeSwitchProperties,
-            IgnitionSwitchProperties, IndicatorSwitch, IndicatorSwitchProperties, KeyPositions,
-            ModernOutsideLightSwitch, ModernOutsideLightSwitchProperties,
-            automatic_gear_box_mode_switch, ignition_switch,
+            IndicatorSwitch, IndicatorSwitchProperties, automatic_gear_box_mode_switch,
         },
         road_vehicle::BBRoadVehiclePneumatics,
         vdv_dashboard::{BBVdvDashboard, VdvDashboard},
@@ -24,23 +22,8 @@ impl Default for CockpitNd313 {
     fn default() -> Self {
         Self {
             vdv_dashboard: VdvDashboard::default()
-                .add_ignition_key(
-                    Button::new(ButtonBehaviour::OnOff)
-                        .with_visibility_change("Key_Inserted")
-                        .with_input(InputEvent::new("InsertKey_Main", 0))
-                        .with_sound_press("snd_KeyMain_Insert")
-                        .with_sound_release("snd_KeyMain_Pull"),
-                )
-                .add_ignition_switch(ignition_switch(IgnitionSwitchProperties::new(
-                    "Key_Rotation",
-                    KeyPositions {
-                        off: 2.0,
-                        step1: 1.0,
-                        step2: 0.0,
-                        starter: -1.0,
-                    },
-                    "snd_KeyLock_Main",
-                )))
+                .add_std_ignition_key()
+                .add_std_ignition_switch()
                 .add_automatic_gear_box_mode_switch_group(automatic_gear_box_mode_switch(
                     AutomaticGearBoxModeSwitchProperties::new(
                         "snd_Sw_GearBox",
@@ -77,9 +60,7 @@ impl Default for CockpitNd313 {
                         30.0,
                     ),
                 ))
-                .add_outside_light_switch(ModernOutsideLightSwitch::new(
-                    ModernOutsideLightSwitchProperties::new("Sw_Light_Pos", "snd_Sw_Light"),
-                ))
+                .add_std_outside_light_switch()
                 .add_btn_door(
                     Button::new(ButtonBehaviour::SpringLoaded)
                         .with_input(InputEvent::new("Door1Toggle", 0))
@@ -87,15 +68,8 @@ impl Default for CockpitNd313 {
                         .with_sound_press("snd_Btn_Door1_Press")
                         .with_sound_release("snd_Btn_Door1_Release"),
                 )
-                .add_btn_door_release(
-                    Button::new(ButtonBehaviour::OnOff)
-                        .with_input(InputEvent::new("DoorReleaseToggle", 0))
-                        .with_input_set_on(InputEvent::new("DoorReleaseOn", 0))
-                        .with_input_set_off(InputEvent::new("DoorReleaseOff", 0))
-                        .with_position_var(("Sw_DoorRelease_Pos".to_string(), 1.0))
-                        .with_sound_press("snd_StdSw_On")
-                        .with_sound_release("snd_StdSw_Off"),
-                )
+                .add_std_btn_door_release()
+                .add_std_sw_door_leaf_lock()
                 .add_btn_display_change_mode(
                     Button::new(ButtonBehaviour::SpringLoaded)
                         .with_input(InputEvent::new("DisplayChange", 0))
