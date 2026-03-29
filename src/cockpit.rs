@@ -1,10 +1,12 @@
 use lotus_extra::{
     bb_system::{
-        basic::ModuleTick,
+        basic::{BackBoneResetInputOutput, BackBoneResetType, ModuleTick},
         cockpit::{Button, ButtonBehaviour},
         cockpit_enhanced::{
             AutomaticGearBoxModeSwitchGroupSwitch, AutomaticGearBoxModeSwitchProperties,
-            IndicatorSwitch, IndicatorSwitchProperties, automatic_gear_box_mode_switch,
+            BBPneumaticHandbrakeLever, IndicatorSwitch, IndicatorSwitchProperties,
+            PneumaticHandbrakeLever, PneumaticHandbrakeLeverProperties,
+            automatic_gear_box_mode_switch,
         },
         road_vehicle::BBRoadVehiclePneumatics,
         vdv_dashboard::{BBVdvDashboard, VdvDashboard},
@@ -16,6 +18,7 @@ use lotus_extra::{
 
 pub struct CockpitNd313 {
     pub vdv_dashboard: VdvDashboard<BBRoadVehiclePneumatics>,
+    pub parking_brake: PneumaticHandbrakeLever,
 }
 
 impl Default for CockpitNd313 {
@@ -68,6 +71,20 @@ impl Default for CockpitNd313 {
                         .with_sound_press("snd_Btn_Door1_Press")
                         .with_sound_release("snd_Btn_Door1_Release"),
                 )
+                .add_btn_door(
+                    Button::new(ButtonBehaviour::OnOff)
+                        .with_input(InputEvent::new("Door2Toggle", 0))
+                        .with_position_var(("Sw_Door2_Pos".to_string(), 1.0))
+                        .with_sound_press("snd_StdSw_On")
+                        .with_sound_release("snd_StdSw_Off"),
+                )
+                .add_btn_door(
+                    Button::new(ButtonBehaviour::OnOff)
+                        .with_input(InputEvent::new("Door3Toggle", 0))
+                        .with_position_var(("Sw_Door3_Pos".to_string(), 1.0))
+                        .with_sound_press("snd_StdSw_On")
+                        .with_sound_release("snd_StdSw_Off"),
+                )
                 .add_std_btn_door_release()
                 .add_std_sw_door_leaf_lock()
                 .add_btn_display_change_mode(
@@ -90,12 +107,35 @@ impl Default for CockpitNd313 {
                     "DisplayIllumination".to_string(),
                     "TexID_CockpitDisplay".to_string(),
                 ))),
+            parking_brake: PneumaticHandbrakeLever::new(
+                PneumaticHandbrakeLeverProperties::new("Sw_Parkingbrake_Pos")
+                    .with_sound_on("snd_ParkingBrake_Apply")
+                    .with_sound_off("snd_ParkingBrake_Release")
+                    .with_sound_pawl("snd_ParkingBrake_HandleRelease")
+                    .with_on_input(InputEvent::new("ParkBrakeOn", 0))
+                    .with_off_input(InputEvent::new("ParkBrakeOff", 0))
+                    .with_toggle_input(InputEvent::new("ParkBrakeToggle", 0)),
+            ),
         }
     }
 }
 
-impl ModuleTick<BBVdvDashboard<BBRoadVehiclePneumatics>> for CockpitNd313 {
-    fn tick(&self, backbone: &mut BBVdvDashboard<BBRoadVehiclePneumatics>) {
-        self.vdv_dashboard.tick(backbone);
+#[derive(Default)]
+pub struct BBCockpitNd313 {
+    pub vdv_dashboard: BBVdvDashboard<BBRoadVehiclePneumatics>,
+    pub parking_brake: BBPneumaticHandbrakeLever,
+}
+
+impl ModuleTick<BBCockpitNd313> for CockpitNd313 {
+    fn tick(&self, backbone: &mut BBCockpitNd313) {
+        self.vdv_dashboard.tick(&mut backbone.vdv_dashboard);
+        self.parking_brake.tick(&mut backbone.parking_brake);
+    }
+}
+
+impl BackBoneResetInputOutput for BBCockpitNd313 {
+    fn reset(&mut self, reset_type: BackBoneResetType) {
+        self.vdv_dashboard.reset(reset_type);
+        self.parking_brake.reset(reset_type);
     }
 }

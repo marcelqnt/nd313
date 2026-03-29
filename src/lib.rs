@@ -12,14 +12,13 @@ use lotus_extra::{
             AxleProperties, BBRoadVehiclePneumatics, BBSteering, BBThrottleBrakeControl,
             RoadVehiclePneumatics, Steering, SteeringProperties, ThrottleBrakeControl,
         },
-        vdv_dashboard::BBVdvDashboard,
     },
     vehicle::Rattling,
 };
 use lotus_script::{Animation, prelude::*, vehicle::RoadWheel};
 
 use crate::{
-    cockpit::CockpitNd313,
+    cockpit::{BBCockpitNd313, CockpitNd313},
     traction::{BBTraction, Traction},
 };
 
@@ -152,6 +151,38 @@ impl Default for MyScript {
                     .with_sound_open("snd_Door12_Open")
                     .with_sound_close("snd_Door12_Close"),
                     Some(0),
+                ))
+                .add_door(DoorUnit::new(
+                    PneumaticDoor::new(
+                        0.000_007_5,
+                        bb_system::doors::PneumaticDoorPressureRate::Linear {
+                            rate: 0.000_000_45,
+                            p_end_normalized: 0.375,
+                        },
+                        (0.01, 0.01),
+                    )
+                    .with_friction(0.2)
+                    .with_position_var("Door_2_1_Pos".to_string())
+                    .with_sound_open("snd_Door2_Open")
+                    .with_sound_close("snd_Door2_Close")
+                    .with_sound_close_bump("snd_Door2_Close_End"),
+                    Some(0),
+                ))
+                .add_door(DoorUnit::new(
+                    PneumaticDoor::new(
+                        0.000_007_5,
+                        bb_system::doors::PneumaticDoorPressureRate::Linear {
+                            rate: 0.000_000_45,
+                            p_end_normalized: 0.375,
+                        },
+                        (0.01, 0.01),
+                    )
+                    .with_friction(0.2)
+                    .with_position_var("Door_3_1_Pos".to_string())
+                    .with_sound_open("snd_Door3_Open")
+                    .with_sound_close("snd_Door3_Close")
+                    .with_sound_close_bump("snd_Door3_Close_End"),
+                    Some(0),
                 )),
             traction: Traction::default(),
             rattling: Rattling::builder()
@@ -229,7 +260,7 @@ pub struct Backbone {
     pub pneumatics: BBRoadVehiclePneumatics,
     pub throttle_brake_control: BBThrottleBrakeControl,
     pub steering: BBSteering,
-    pub cockpit: BBVdvDashboard<BBRoadVehiclePneumatics>,
+    pub cockpit: BBCockpitNd313,
     pub powersupply: BBPowerSupply,
     pub traction: BBTraction,
     pub piston_traction_transfer: BBPistonTractionTransfer,
