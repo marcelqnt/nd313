@@ -9,31 +9,30 @@ use lotus_extra::{
 };
 use lotus_script::{log, message};
 
-use crate::MyScript;
+use crate::{Backbone, Modules};
 
 const DOORS_MAX_SPEED_MPS: f32 = 3.0 / 3.6;
 const MIN_THROTTLE_RELEASE_STOP_BRAKE: f32 = 0.1;
 
-impl MyScript {
-    pub fn tick_interface(&mut self) {
-        self.powersupply_in();
+impl Modules {
+    pub fn tick_interface(&mut self, backbone: &mut Backbone) {
+        self.powersupply_in(backbone);
 
-        self.pneumatics_in();
+        self.pneumatics_in(backbone);
 
-        self.traction_in();
+        self.traction_in(backbone);
 
-        self.outsidelights_in();
+        self.outsidelights_in(backbone);
 
-        self.cockpit_in();
+        self.cockpit_in(backbone);
 
-        self.doors_in();
+        self.doors_in(backbone);
     }
 
-    fn powersupply_in(&mut self) {
-        let bb_powersupply = &mut self.backbone.powersupply;
+    fn powersupply_in(&self, backbone: &mut Backbone) {
+        let bb_powersupply = &mut backbone.powersupply;
 
-        if let Some(state) = self
-            .backbone
+        if let Some(state) = backbone
             .cockpit
             .vdv_dashboard
             .ignition_switch
@@ -45,44 +44,37 @@ impl MyScript {
         }
     }
 
-    fn pneumatics_in(&mut self) {
-        self.backbone.pneumatics.n_engine_rpm = self.backbone.piston_traction_transfer.rpm;
+    fn pneumatics_in(&mut self, backbone: &mut Backbone) {
+        backbone.pneumatics.n_engine_rpm = backbone.piston_traction_transfer.rpm;
 
-        self.backbone.pneumatics.target_air_brake =
-            self.backbone.throttle_brake_control.brake_value.get_state();
+        backbone.pneumatics.target_air_brake =
+            backbone.throttle_brake_control.brake_value.get_state();
 
-        self.backbone.pneumatics.target_stop_brake =
-            self.backbone.doors.stop_brake_controller.state.get_state();
+        backbone.pneumatics.target_stop_brake =
+            backbone.doors.stop_brake_controller.state.get_state();
 
-        if let Some(state) = self
-            .backbone
-            .cockpit
-            .parking_brake
-            .switch
-            .state
-            .get_if_changed()
-        {
+        if let Some(state) = backbone.cockpit.parking_brake.switch.state.get_if_changed() {
             log::info!("(A) parking_brake_switch: {:?}", state);
         }
 
-        self.backbone
+        backbone
             .cockpit
             .parking_brake
             .switch
             .state
             .call_on_changed(|state| {
                 log::info!("parking_brake_switch: {:?}", state);
-                self.backbone.pneumatics.sw_parkingbrake_pos = state.if_else(1.0, 0.0);
+                backbone.pneumatics.sw_parkingbrake_pos = state.if_else(1.0, 0.0);
             });
     }
 
-    fn traction_in(&mut self) {
-        let bb_cockpit = &mut self.backbone.cockpit.vdv_dashboard;
-        let bb_powersupply = &mut self.backbone.powersupply;
+    fn traction_in(&mut self, backbone: &mut Backbone) {
+        let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
+        let bb_powersupply = &mut backbone.powersupply;
 
         // Engine Start/Stop:
         self.traction.piston.starter_relay(
-            &mut self.backbone.traction.piston_traction,
+            &mut backbone.traction.piston_traction,
             bb_cockpit.ignition_switch.state.get_state().into(),
             bb_powersupply.get_battery(0).unwrap(),
         );
@@ -98,17 +90,13 @@ impl MyScript {
         }
     }
 
-    fn outsidelights_in(&mut self) {
-        let bb_cockpit = &mut self.backbone.cockpit.vdv_dashboard;
-        let bb_outside_lights = &mut self.backbone.outside_lights;
-        let bus_2 = self.backbone.powersupply.bus_active(1);
+    fn outsidelights_in(&mut self, backbone: &mut Backbone) {
+        let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
+        let bb_outside_lights = &mut backbone.outside_lights;
+        let bus_2 = backbone.powersupply.bus_active(1);
 
-        bb_outside_lights.input.voltage = self
-            .backbone
-            .powersupply
-            .get_bus(1)
-            .unwrap()
-            .voltage_available;
+        bb_outside_lights.input.voltage =
+            backbone.powersupply.get_bus(1).unwrap().voltage_available;
 
         if !bus_2.get_state() {
             bb_outside_lights.input.indicator = IndicatorState::Off;
@@ -126,26 +114,24 @@ impl MyScript {
             .if_else(1.0, 0.0);
     }
 
-    fn cockpit_in(&mut self) {
-        let bb_cockpit = &mut self.backbone.cockpit.vdv_dashboard;
+    fn cockpit_in(&mut self, backbone: &mut Backbone) {
+        let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
 
-        if let Some(electricity_available) =
-            self.backbone.powersupply.bus_active(0).get_if_changed()
-        {
+        if let Some(electricity_available) = backbone.powersupply.bus_active(0).get_if_changed() {
             bb_cockpit.set_electricity_available(electricity_available);
         }
 
-        bb_cockpit.pneumatics = self.backbone.pneumatics;
+        bb_cockpit.pneumatics = backbone.pneumatics;
 
         bb_cockpit
             .indicator_switch
-            .set_steering_normalized(self.backbone.steering.angle_normalized);
+            .set_steering_normalized(backbone.steering.angle_normalized);
     }
 
-    fn doors_in(&mut self) {
-        let bb_doors = &mut self.backbone.doors;
-        let bb_cockpit = &mut self.backbone.cockpit.vdv_dashboard;
-        let bb_powersupply = &mut self.backbone.powersupply;
+    fn doors_in(&mut self, backbone: &mut Backbone) {
+        let bb_doors = &mut backbone.doors;
+        let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
+        let bb_powersupply = &mut backbone.powersupply;
 
         bb_doors.set_p_available(800_000.0);
 
@@ -155,8 +141,7 @@ impl MyScript {
             .bus_active(1)
             .copy_on_changed(&mut bb_doors.stop_brake_controller_conditions.power_available);
 
-        if let Some(throttle_pedal) = self
-            .backbone
+        if let Some(throttle_pedal) = backbone
             .throttle_brake_control
             .throttle_value
             .get_if_changed()
@@ -168,11 +153,11 @@ impl MyScript {
             log::info!("throttle_pedal: {:?}", throttle_pedal);
         }
 
-        let vehicle_stopped = self.axles[1].v_axle_mps() < DOORS_MAX_SPEED_MPS;
+        let vehicle_stopped = backbone.axle.v_axle_mps() < DOORS_MAX_SPEED_MPS;
 
-        bb_doors.release_activatable.set_if_different(
-            vehicle_stopped && self.backbone.powersupply.bus_active(1).get_state(),
-        );
+        bb_doors
+            .release_activatable
+            .set_if_different(vehicle_stopped && backbone.powersupply.bus_active(1).get_state());
         bb_doors.stop_brake_controller_conditions.vehicle_stopped = vehicle_stopped;
 
         bb_cockpit.btn_door_releases[0].forward_on_changed(&mut bb_doors.releases[0].target);
@@ -199,9 +184,9 @@ impl MyScript {
         });
     }
 
-    pub fn interface_on_message(&mut self, msg: &message::Message) {
+    pub fn interface_on_message(&mut self, backbone: &mut Backbone, msg: &message::Message) {
         msg.handle(|g: messages::std::AutomaticGearboxCurrentGear| {
-            self.backbone.cockpit.vdv_dashboard.current_gear.set(g);
+            backbone.cockpit.vdv_dashboard.current_gear.set(g);
             Ok(())
         })
         .unwrap();

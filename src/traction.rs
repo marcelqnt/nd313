@@ -31,6 +31,7 @@ impl Traction {
 
 impl ModuleTick<BBTraction> for Traction {
     fn tick(&self, _: &mut BBTraction) {}
+    fn init(&self, _: &mut BBTraction) {}
 }
 
 #[derive(Default)]

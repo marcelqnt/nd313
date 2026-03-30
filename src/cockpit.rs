@@ -108,13 +108,7 @@ impl Default for CockpitNd313 {
                     "TexID_CockpitDisplay".to_string(),
                 ))),
             parking_brake: PneumaticHandbrakeLever::new(
-                PneumaticHandbrakeLeverProperties::new("Sw_Parkingbrake_Pos")
-                    .with_sound_on("snd_ParkingBrake_Apply")
-                    .with_sound_off("snd_ParkingBrake_Release")
-                    .with_sound_pawl("snd_ParkingBrake_HandleRelease")
-                    .with_on_input(InputEvent::new("ParkBrakeOn", 0))
-                    .with_off_input(InputEvent::new("ParkBrakeOff", 0))
-                    .with_toggle_input(InputEvent::new("ParkBrakeToggle", 0)),
+                PneumaticHandbrakeLeverProperties::new_std(),
             ),
         }
     }
@@ -130,6 +124,11 @@ impl ModuleTick<BBCockpitNd313> for CockpitNd313 {
     fn tick(&self, backbone: &mut BBCockpitNd313) {
         self.vdv_dashboard.tick(&mut backbone.vdv_dashboard);
         self.parking_brake.tick(&mut backbone.parking_brake);
+    }
+
+    fn init(&self, backbone: &mut BBCockpitNd313) {
+        self.vdv_dashboard.init(&mut backbone.vdv_dashboard);
+        self.parking_brake.init(&mut backbone.parking_brake);
     }
 }
 
