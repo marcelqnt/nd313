@@ -9,7 +9,7 @@ use lotus_extra::{
         piston_traction::BBPistonTractionTransfer,
         power::{BBPowerSupply, Battery, ElectricBus, PowerSupply},
         road_vehicle::{
-            AxleProperties, BBAxle, BBRoadVehiclePneumatics, BBSteering, BBThrottleBrakeControl,
+            Axle, BBAxle, BBRoadVehiclePneumatics, BBSteering, BBThrottleBrakeControl,
             RoadVehiclePneumatics, Steering, SteeringProperties, ThrottleBrakeControl,
         },
     },
@@ -52,7 +52,7 @@ impl Default for MyScript {
 }
 
 pub struct Modules {
-    axles: Vec<AxleProperties>,
+    axles: Vec<Axle>,
     powersupply: PowerSupply,
     pneumatics: RoadVehiclePneumatics,
     traction: Traction,
@@ -66,11 +66,11 @@ pub struct Modules {
 impl Default for Modules {
     fn default() -> Self {
         let axles = vec![
-            AxleProperties::new(0, WHEEL_DIAMETER),
-            AxleProperties::new(1, WHEEL_DIAMETER)
+            Axle::new(0, WHEEL_DIAMETER),
+            Axle::new(1, WHEEL_DIAMETER)
                 .with_tacho("DiffGear_mps".to_string())
                 .with_traction(1, 5.74),
-            AxleProperties::new(2, WHEEL_DIAMETER),
+            Axle::new(2, WHEEL_DIAMETER),
         ];
 
         let pneumatics = RoadVehiclePneumatics::builder()
