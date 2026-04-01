@@ -126,11 +126,28 @@ impl Modules {
             bb_cockpit.set_electricity_available(electricity_available);
         }
 
+        bb_cockpit.voltage_available = backbone.powersupply.get_bus(0).unwrap().voltage;
+
         bb_cockpit.pneumatics = backbone.pneumatics;
 
         bb_cockpit
             .indicator_switch
             .set_steering_normalized(backbone.steering.angle_normalized);
+
+        backbone
+            .outside_lights
+            .indicator
+            .blink_relay
+            .state
+            .forward_on_changed(&mut bb_cockpit.indicators_bulbs);
+
+        backbone.doors.doors[2]
+            .stop_sign
+            .forward_on_changed(&mut bb_cockpit.stop_request_middle);
+
+        backbone.doors.doors[3]
+            .stop_sign
+            .forward_on_changed(&mut bb_cockpit.stop_request_rear);
     }
 
     fn doors_in(&mut self, backbone: &mut Backbone) {
@@ -144,7 +161,7 @@ impl Modules {
 
         if let Some(power_available) = bb_powersupply.bus_active(1).get_if_changed() {
             bb_doors.stop_brake_controller_conditions.power_available = power_available;
-            bb_doors.set_all_doors_power_available(power_available);
+            bb_doors.power_available.set_if_different(power_available);
         }
 
         if let Some(throttle_pedal) = backbone

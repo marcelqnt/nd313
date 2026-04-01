@@ -102,6 +102,9 @@ impl Default for CockpitNd313 {
                         .with_sound_press("snd_StdTa_On")
                         .with_sound_release("snd_StdTa_Off"),
                 )
+                .add_std_il_indicators()
+                .add_std_il_stop_request_middle()
+                .add_std_il_stop_request_rear()
                 .add_display(VdvDisplay::new(VdvDisplayProperties::new(
                     VdvBusType::ThreeAxlesThreeDoors,
                     VdvRampType::High,
