@@ -1,6 +1,6 @@
 use lotus_extra::{
     bb_system::{
-        basic::{BackBoneResetInputOutput, BackBoneResetType, ModuleTick},
+        basic::{BackBoneResetInputOutput, BackBoneResetType, ModuleInit, ModuleTick},
         cockpit::{Button, ButtonBehaviour},
         cockpit_enhanced::{
             AutomaticGearBoxModeSwitchGroupSwitch, AutomaticGearBoxModeSwitchProperties,
@@ -64,6 +64,7 @@ impl Default for CockpitNd313 {
                     ),
                 ))
                 .add_std_outside_light_switch()
+                .add_std_inside_light_step_switch()
                 .add_btn_door(
                     Button::new(ButtonBehaviour::SpringLoaded)
                         .with_input(InputEvent::new("Door1Toggle", 0))
@@ -125,7 +126,9 @@ impl ModuleTick<BBCockpitNd313> for CockpitNd313 {
         self.vdv_dashboard.tick(&mut backbone.vdv_dashboard);
         self.parking_brake.tick(&mut backbone.parking_brake);
     }
+}
 
+impl ModuleInit<BBCockpitNd313> for CockpitNd313 {
     fn init(&self, backbone: &mut BBCockpitNd313) {
         self.vdv_dashboard.init(&mut backbone.vdv_dashboard);
         self.parking_brake.init(&mut backbone.parking_brake);

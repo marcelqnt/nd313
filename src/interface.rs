@@ -5,7 +5,7 @@ use lotus_extra::{
         lights::{IndicatorState, OutsideLightKind},
     },
     math::IfElse,
-    messages::{self},
+    messages::{self, std::RetarderRequest},
 };
 use lotus_script::{log, message};
 
@@ -82,11 +82,16 @@ impl Modules {
         // Gearbox Mode
         if let Some(state) = bb_cockpit.get_gearbox_mode() {
             self.traction.piston.send_gearbox_mode(&state);
+        }
 
-            // self.backbone
-            //     .cockpit
-            //     .automatic_gear_box_mode_switch_group
-            //     .reset();
+        if let Some(brake_value) = backbone.throttle_brake_control.brake_value.get_if_changed() {
+            let retarder_request = (brake_value > 0.02).if_else(1, 0);
+
+            if backbone.retarder_request.set_if_different(retarder_request) {
+                self.traction
+                    .piston
+                    .send_retarder_request(&RetarderRequest(retarder_request));
+            }
         }
     }
 
@@ -137,9 +142,10 @@ impl Modules {
 
         // Stop brake and release
 
-        bb_powersupply
-            .bus_active(1)
-            .copy_on_changed(&mut bb_doors.stop_brake_controller_conditions.power_available);
+        if let Some(power_available) = bb_powersupply.bus_active(1).get_if_changed() {
+            bb_doors.stop_brake_controller_conditions.power_available = power_available;
+            bb_doors.set_all_doors_power_available(power_available);
+        }
 
         if let Some(throttle_pedal) = backbone
             .throttle_brake_control

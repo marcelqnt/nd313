@@ -1,16 +1,21 @@
 use lotus_extra::{
     bb_system::{
         self,
-        basic::{BackBone, BackBoneResetInputOutput, BackBoneResetType, ModuleTick},
-        doors::{BBDoors, DoorRelease, DoorUnit, Doors, PneumaticDoor, StopBrakeController},
+        basic::{
+            BBSimple, BackBone, BackBoneResetInputOutput, BackBoneResetType, ModuleInit, ModuleTick,
+        },
+        doors::{
+            BBDoors, DoorRelease, DoorUnit, DoorUnitAutomatic, Doors, PneumaticDoor,
+            StopBrakeController,
+        },
         lights::{
             BBOutsideLights, Bulb, IndicatorLights, OutsideLightKind, OutsideLights, StandardLight,
         },
-        piston_traction::BBPistonTractionTransfer,
+        piston_traction::{BBPistonTractionTransfer, BBThrottleBrakeControl, ThrottleBrakeControl},
         power::{BBPowerSupply, Battery, ElectricBus, PowerSupply},
         road_vehicle::{
-            Axle, BBAxle, BBRoadVehiclePneumatics, BBSteering, BBThrottleBrakeControl,
-            RoadVehiclePneumatics, Steering, SteeringProperties, ThrottleBrakeControl,
+            Axle, BBAxle, BBRoadVehiclePneumatics, BBSteering, RoadVehiclePneumatics, Steering,
+            SteeringProperties,
         },
     },
     vehicle::Rattling,
@@ -33,9 +38,6 @@ pub struct MyScript {
     backbone: Backbone,
 
     rattling: Rattling,
-    // _wheels: [RoadWheel; 2],
-
-    // test: Input,
 }
 
 impl Default for MyScript {
@@ -78,7 +80,6 @@ impl Default for Modules {
             .build();
 
         Self {
-            // _wheels: [RoadWheel::get(1, 0).unwrap(), RoadWheel::get(1, 1).unwrap()],
             steering: Steering::new(SteeringProperties::new(40.0)),
 
             powersupply: PowerSupply::new(
@@ -151,6 +152,7 @@ impl Default for Modules {
                     .with_position_var("Door_1_1_Pos".to_string())
                     .with_sound_open("snd_Door11_Open")
                     .with_sound_close("snd_Door11_Close"),
+                    DoorUnitAutomatic::Manual,
                     Some(0),
                 ))
                 .add_door(DoorUnit::new(
@@ -166,6 +168,7 @@ impl Default for Modules {
                     .with_position_var("Door_1_2_Pos".to_string())
                     .with_sound_open("snd_Door12_Open")
                     .with_sound_close("snd_Door12_Close"),
+                    DoorUnitAutomatic::Manual,
                     Some(0),
                 ))
                 .add_door(DoorUnit::new(
@@ -182,6 +185,7 @@ impl Default for Modules {
                     .with_sound_open("snd_Door2_Open")
                     .with_sound_close("snd_Door2_Close")
                     .with_sound_close_bump("snd_Door2_Close_End"),
+                    DoorUnitAutomatic::Timer(5.5),
                     Some(0),
                 ))
                 .add_door(DoorUnit::new(
@@ -198,6 +202,7 @@ impl Default for Modules {
                     .with_sound_open("snd_Door3_Open")
                     .with_sound_close("snd_Door3_Close")
                     .with_sound_close_bump("snd_Door3_Close_End"),
+                    DoorUnitAutomatic::Timer(5.5),
                     Some(0),
                 )),
             traction: Traction::default(),
@@ -218,19 +223,17 @@ impl ModuleTick<Backbone> for Modules {
         self.doors.tick(&mut backbone.doors);
         self.axles[1].tick(&mut backbone.axle);
     }
+}
 
+impl ModuleInit<Backbone> for Modules {
     fn init(&self, backbone: &mut Backbone) {
         log::info!("Modules init");
         self.pneumatics.init(&mut backbone.pneumatics);
-        self.throttle_brake_control
-            .init(&mut backbone.throttle_brake_control);
-        self.steering.init(&mut backbone.steering);
-        self.cockpit.init(&mut backbone.cockpit);
         self.powersupply.init(&mut backbone.powersupply);
-        self.traction.init(&mut backbone.traction);
         self.outside_lights.init(&mut backbone.outside_lights);
         self.doors.init(&mut backbone.doors);
         self.axles[1].init(&mut backbone.axle);
+        self.cockpit.init(&mut backbone.cockpit);
     }
 }
 
@@ -286,6 +289,8 @@ pub struct Backbone {
     pub outside_lights: BBOutsideLights,
     pub doors: BBDoors,
     pub axle: BBAxle,
+    // own
+    pub retarder_request: BBSimple<i8>,
 }
 
 impl BackBoneResetInputOutput for Backbone {
