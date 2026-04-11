@@ -9,7 +9,7 @@ use lotus_extra::{
             automatic_gear_box_mode_switch,
         },
         road_vehicle::BBRoadVehiclePneumatics,
-        vdv_dashboard::{BBVdvDashboard, VdvDashboard},
+        vdv_dashboard::{BBVdvDashboard, VdvDashboard, standard_switch},
         vdv_display::{VdvBusType, VdvDisplay, VdvDisplayProperties, VdvRampType},
     },
     input::InputEvent,
@@ -50,6 +50,8 @@ impl Default for CockpitNd313 {
                         ],
                     ),
                 ))
+                .add_std_retarder_switch()
+                .add_std_asr_switch()
                 .add_indicator_switch(IndicatorSwitch::new(
                     IndicatorSwitchProperties::new(
                         "Sw_Indicator_Pos",
@@ -63,8 +65,11 @@ impl Default for CockpitNd313 {
                         30.0,
                     ),
                 ))
+                .add_std_flash_light_switch()
                 .add_std_outside_light_switch()
                 .add_std_inside_light_step_switch()
+                .add_std_inside_light_driver_switch()
+                .add_std_inside_light_secondary_switch()
                 .add_btn_door(
                     Button::new(ButtonBehaviour::SpringLoaded)
                         .with_input(InputEvent::new("Door1Toggle", 0))
@@ -72,45 +77,37 @@ impl Default for CockpitNd313 {
                         .with_sound_press("snd_Btn_Door1_Press")
                         .with_sound_release("snd_Btn_Door1_Release"),
                 )
-                .add_btn_door(
-                    Button::new(ButtonBehaviour::OnOff)
-                        .with_input(InputEvent::new("Door2Toggle", 0))
-                        .with_position_var(("Sw_Door2_Pos".to_string(), 1.0))
-                        .with_sound_press("snd_StdSw_On")
-                        .with_sound_release("snd_StdSw_Off"),
-                )
-                .add_btn_door(
-                    Button::new(ButtonBehaviour::OnOff)
-                        .with_input(InputEvent::new("Door3Toggle", 0))
-                        .with_position_var(("Sw_Door3_Pos".to_string(), 1.0))
-                        .with_sound_press("snd_StdSw_On")
-                        .with_sound_release("snd_StdSw_Off"),
-                )
+                .add_btn_door(standard_switch(
+                    "Sw_Door2_Pos",
+                    InputEvent::new("Door2Toggle", 0),
+                ))
+                .add_btn_door(standard_switch(
+                    "Sw_Door3_Pos",
+                    InputEvent::new("Door3Toggle", 0),
+                ))
                 .add_std_btn_door_release()
                 .add_std_sw_door_leaf_lock()
-                .add_btn_display_change_mode(
-                    Button::new(ButtonBehaviour::SpringLoaded)
-                        .with_input(InputEvent::new("DisplayChange", 0))
-                        .with_position_var(("Sw_Display_Pos".to_string(), 1.0))
-                        .with_sound_press("snd_StdTa_On")
-                        .with_sound_release("snd_StdTa_Off"),
-                )
-                .add_btn_display_error(
-                    Button::new(ButtonBehaviour::SpringLoaded)
-                        .with_input(InputEvent::new("DisplayDiagnose", 0))
-                        .with_position_var(("Sw_Display_Pos".to_string(), -1.0))
-                        .with_sound_press("snd_StdTa_On")
-                        .with_sound_release("snd_StdTa_Off"),
-                )
+                .add_std_btn_display_change_mode(1.0)
+                .add_std_btn_display_brightness_plus(1.0)
+                .add_std_btn_display_brightness_minus(-1.0)
+                .add_std_btn_display_error(-1.0)
+                .add_std_il_master_error()
+                .add_std_il_master_warning()
+                .add_std_il_high_beam()
                 .add_std_il_indicators()
+                .add_std_il_parking_brake()
+                .add_std_il_abs()
                 .add_std_il_stop_request_middle()
                 .add_std_il_stop_request_rear()
+                .add_std_il_wheelchair_request()
+                .add_std_il_doors_rear()
                 .add_display(VdvDisplay::new(VdvDisplayProperties::new(
                     VdvBusType::ThreeAxlesThreeDoors,
                     VdvRampType::High,
                     "DisplayIllumination".to_string(),
                     "TexID_CockpitDisplay".to_string(),
-                ))),
+                )))
+                .add_il_test(2.0),
             parking_brake: PneumaticHandbrakeLever::new(
                 PneumaticHandbrakeLeverProperties::new_std(),
             ),

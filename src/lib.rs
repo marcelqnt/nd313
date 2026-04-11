@@ -258,13 +258,6 @@ impl Script for MyScript {
         self.rattling.tick();
 
         self.backbone.reset(BackBoneResetType::Input);
-
-        if let Some(test) = self.backbone.powersupply.bus_active(0).get_if_changed() {
-            set_var("Lm_MasterError", test as i8 as f32);
-        }
-        if let Some(test) = self.backbone.powersupply.bus_active(1).get_if_changed() {
-            set_var("Lm_MasterWarning", test as i8 as f32);
-        }
     }
 
     fn on_message(&mut self, msg: lotus_script::message::Message) {

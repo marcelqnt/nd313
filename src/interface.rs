@@ -16,20 +16,20 @@ const MIN_THROTTLE_RELEASE_STOP_BRAKE: f32 = 0.1;
 
 impl Modules {
     pub fn tick_interface(&mut self, backbone: &mut Backbone) {
-        self.powersupply_in(backbone);
+        self.powersupply_input(backbone);
 
-        self.pneumatics_in(backbone);
+        self.pneumatics_input(backbone);
 
-        self.traction_in(backbone);
+        self.traction_input(backbone);
 
-        self.outsidelights_in(backbone);
+        self.outsidelights_input(backbone);
 
-        self.cockpit_in(backbone);
+        self.cockpit_input(backbone);
 
-        self.doors_in(backbone);
+        self.doors_input(backbone);
     }
 
-    fn powersupply_in(&self, backbone: &mut Backbone) {
+    fn powersupply_input(&self, backbone: &mut Backbone) {
         let bb_powersupply = &mut backbone.powersupply;
 
         if let Some(state) = backbone
@@ -44,7 +44,7 @@ impl Modules {
         }
     }
 
-    fn pneumatics_in(&mut self, backbone: &mut Backbone) {
+    fn pneumatics_input(&mut self, backbone: &mut Backbone) {
         backbone.pneumatics.n_engine_rpm = backbone.piston_traction_transfer.rpm;
 
         backbone.pneumatics.target_air_brake =
@@ -68,7 +68,7 @@ impl Modules {
             });
     }
 
-    fn traction_in(&mut self, backbone: &mut Backbone) {
+    fn traction_input(&mut self, backbone: &mut Backbone) {
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_powersupply = &mut backbone.powersupply;
 
@@ -95,7 +95,7 @@ impl Modules {
         }
     }
 
-    fn outsidelights_in(&mut self, backbone: &mut Backbone) {
+    fn outsidelights_input(&mut self, backbone: &mut Backbone) {
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_outside_lights = &mut backbone.outside_lights;
         let bus_2 = backbone.powersupply.bus_active(1);
@@ -119,12 +119,9 @@ impl Modules {
             .if_else(1.0, 0.0);
     }
 
-    fn cockpit_in(&mut self, backbone: &mut Backbone) {
+    fn cockpit_input(&mut self, backbone: &mut Backbone) {
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
-
-        if let Some(electricity_available) = backbone.powersupply.bus_active(0).get_if_changed() {
-            bb_cockpit.set_electricity_available(electricity_available);
-        }
+        let bb_doors = &mut backbone.doors;
 
         bb_cockpit.voltage_available = backbone.powersupply.get_bus(0).unwrap().voltage;
 
@@ -141,16 +138,20 @@ impl Modules {
             .state
             .forward_on_changed(&mut bb_cockpit.indicators_bulbs);
 
-        backbone.doors.doors[2]
+        bb_doors.doors[2]
             .stop_sign
             .forward_on_changed(&mut bb_cockpit.stop_request_middle);
 
-        backbone.doors.doors[3]
+        bb_doors.doors[3]
             .stop_sign
             .forward_on_changed(&mut bb_cockpit.stop_request_rear);
+
+        bb_doors
+            .door_closed(2)
+            .nand(bb_doors.door_closed(3), &mut bb_cockpit.rear_doors);
     }
 
-    fn doors_in(&mut self, backbone: &mut Backbone) {
+    fn doors_input(&mut self, backbone: &mut Backbone) {
         let bb_doors = &mut backbone.doors;
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_powersupply = &mut backbone.powersupply;
