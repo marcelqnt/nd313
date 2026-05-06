@@ -2,12 +2,12 @@ use lotus_extra::{
     bb_system::{
         basic::{BackBone, BackBoneForwarding},
         cockpit_enhanced::IgnitionSwitchStep,
-        lights::{IndicatorState, OutsideLightKind},
+        lights::IndicatorState,
     },
     math::IfElse,
     messages::{self, std::RetarderRequest},
 };
-use lotus_script::{log, message};
+use lotus_script::message;
 
 use crate::{Backbone, Modules};
 
@@ -21,6 +21,8 @@ impl Modules {
         self.pneumatics_input(backbone);
 
         self.traction_input(backbone);
+
+        self.steering_input(backbone);
 
         self.outsidelights_input(backbone);
 
@@ -36,6 +38,7 @@ impl Modules {
             .cockpit
             .vdv_dashboard
             .ignition_switch
+            .switch
             .state
             .get_if_changed()
         {
@@ -53,17 +56,12 @@ impl Modules {
         backbone.pneumatics.target_stop_brake =
             backbone.doors.stop_brake_controller.state.get_state();
 
-        if let Some(state) = backbone.cockpit.parking_brake.switch.state.get_if_changed() {
-            log::info!("(A) parking_brake_switch: {:?}", state);
-        }
-
         backbone
             .cockpit
             .parking_brake
             .switch
             .state
             .call_on_changed(|state| {
-                log::info!("parking_brake_switch: {:?}", state);
                 backbone.pneumatics.sw_parkingbrake_pos = state.if_else(1.0, 0.0);
             });
     }
@@ -75,7 +73,7 @@ impl Modules {
         // Engine Start/Stop:
         self.traction.piston.starter_relay(
             &mut backbone.traction.piston_traction,
-            bb_cockpit.ignition_switch.state.get_state().into(),
+            bb_cockpit.ignition_switch.switch.state.get_state().into(),
             bb_powersupply.get_battery(0).unwrap(),
         );
 
@@ -95,35 +93,63 @@ impl Modules {
         }
     }
 
+    fn steering_input(&mut self, backbone: &mut Backbone) {
+        backbone.steering.speed_mps_abs = backbone.axle.v_axle_mps().abs();
+    }
+
     fn outsidelights_input(&mut self, backbone: &mut Backbone) {
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_outside_lights = &mut backbone.outside_lights;
         let bus_2 = backbone.powersupply.bus_active(1);
+        let voltage_available = backbone.powersupply.get_bus(0).unwrap().voltage_available;
 
         bb_outside_lights.input.voltage =
             backbone.powersupply.get_bus(1).unwrap().voltage_available;
 
-        if !bus_2.get_state() {
+        if voltage_available > 0.0 && bb_cockpit.flash_light_switch.state.get_state() {
+            bb_outside_lights.input.indicator = IndicatorState::Warning;
+        } else if !bus_2.get_state() {
             bb_outside_lights.input.indicator = IndicatorState::Off;
         } else {
             bb_outside_lights.input.indicator = bb_cockpit.indicator_switch.get_state().into();
         }
 
-        bb_outside_lights.input.lights[OutsideLightKind::Parking.as_index()] = bb_cockpit
+        let park_n_rear = bb_cockpit
             .modern_outside_light_switch
             .parking()
             .if_else(1.0, 0.0);
-        bb_outside_lights.input.lights[OutsideLightKind::Dim.as_index()] = bb_cockpit
+
+        let dim_light: f32 = bb_cockpit
             .modern_outside_light_switch
             .dim()
             .if_else(1.0, 0.0);
+
+        let brake_light: f32 =
+            (backbone.throttle_brake_control.brake_value.get_state() > 0.02).if_else(1.0, 0.0);
+
+        bb_outside_lights.input.bulbs[crate::BULB_INDEX_PARKNREAR] =
+            park_n_rear * voltage_available;
+        bb_outside_lights.input.bulbs[crate::BULB_INDEX_PARKNREAR_LED] = park_n_rear;
+
+        bb_outside_lights.input.bulbs[crate::BULB_INDEX_DIMLIGHT] = dim_light * voltage_available;
+        bb_outside_lights.input.bulbs[crate::BULB_INDEX_DIMLIGHT_SCALE] =
+            dim_light.max(park_n_rear * 0.4) * voltage_available;
+
+        bb_outside_lights.input.bulbs[crate::BULB_INDEX_DIMLIGHT_BLUE] = 0.5 + 0.5 * dim_light;
+
+        bb_outside_lights.input.bulbs[crate::BULB_INDEX_BRAKE] = brake_light * voltage_available;
+        bb_outside_lights.input.bulbs[crate::BULB_INDEX_BRAKE_LED] = brake_light;
+
+        bb_outside_lights.input.bulbs[crate::BULB_INDEX_REARNBRAKE] =
+            brake_light.max(park_n_rear * 0.7);
     }
 
     fn cockpit_input(&mut self, backbone: &mut Backbone) {
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_doors = &mut backbone.doors;
 
-        bb_cockpit.voltage_available = backbone.powersupply.get_bus(0).unwrap().voltage;
+        bb_cockpit.voltage = backbone.powersupply.get_bus(0).unwrap().voltage;
+        bb_cockpit.voltage_available = backbone.powersupply.get_bus(0).unwrap().voltage_available;
 
         bb_cockpit.pneumatics = backbone.pneumatics;
 
@@ -138,6 +164,14 @@ impl Modules {
             .state
             .forward_on_changed(&mut bb_cockpit.indicators_bulbs);
 
+        bb_doors.door_closed(0).call_on_changed(|closed| {
+            bb_cockpit.il_doors_target[0].set(!closed);
+        });
+
+        bb_doors
+            .door_closed(2)
+            .nand(bb_doors.door_closed(3), &mut bb_cockpit.rear_doors);
+
         bb_doors.doors[2]
             .stop_sign
             .forward_on_changed(&mut bb_cockpit.stop_request_middle);
@@ -146,9 +180,9 @@ impl Modules {
             .stop_sign
             .forward_on_changed(&mut bb_cockpit.stop_request_rear);
 
-        bb_doors
-            .door_closed(2)
-            .nand(bb_doors.door_closed(3), &mut bb_cockpit.rear_doors);
+        bb_cockpit
+            .engine_running
+            .set_if_different(backbone.piston_traction_transfer.rpm > 100.0);
     }
 
     fn doors_input(&mut self, backbone: &mut Backbone) {
@@ -173,8 +207,6 @@ impl Modules {
             bb_doors
                 .stop_brake_controller_conditions
                 .throttle_pedal_pressed = throttle_pedal > MIN_THROTTLE_RELEASE_STOP_BRAKE;
-
-            log::info!("throttle_pedal: {:?}", throttle_pedal);
         }
 
         let vehicle_stopped = backbone.axle.v_axle_mps() < DOORS_MAX_SPEED_MPS;
@@ -184,14 +216,18 @@ impl Modules {
             .set_if_different(vehicle_stopped && backbone.powersupply.bus_active(1).get_state());
         bb_doors.stop_brake_controller_conditions.vehicle_stopped = vehicle_stopped;
 
-        bb_cockpit.btn_door_releases[0].forward_on_changed(&mut bb_doors.releases[0].target);
         bb_cockpit.btn_door_releases[0]
+            .state
+            .forward_on_changed(&mut bb_doors.releases[0].target);
+        bb_cockpit.btn_door_releases[0]
+            .state
             .forward_on_changed(&mut bb_doors.stop_brake_controller.target);
 
         bb_cockpit
             .btn_doors
             .first()
             .unwrap()
+            .state
             .call_on_changed(|pos| {
                 if pos {
                     self.doors.toggle_door(bb_doors, 0);
@@ -199,11 +235,11 @@ impl Modules {
                 }
             });
 
-        bb_cockpit.btn_doors[1].call_on_changed(|pos| {
+        bb_cockpit.btn_doors[1].state.call_on_changed(|pos| {
             self.doors.set_door_target(bb_doors, 2, pos);
         });
 
-        bb_cockpit.btn_doors[2].call_on_changed(|pos| {
+        bb_cockpit.btn_doors[2].state.call_on_changed(|pos| {
             self.doors.set_door_target(bb_doors, 3, pos);
         });
     }

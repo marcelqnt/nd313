@@ -2,15 +2,14 @@ use lotus_extra::{
     bb_system::{
         self,
         basic::{
-            BBSimple, BackBone, BackBoneResetInputOutput, BackBoneResetType, ModuleInit, ModuleTick,
+            BBSimple, BackBoneResetInputOutput, BackBoneResetType, ModuleInit, ModuleOnMessage,
+            ModuleTick,
         },
         doors::{
             BBDoors, DoorRelease, DoorUnit, DoorUnitAutomatic, Doors, PneumaticDoor,
             StopBrakeController,
         },
-        lights::{
-            BBOutsideLights, Bulb, IndicatorLights, OutsideLightKind, OutsideLights, StandardLight,
-        },
+        lights::{BBOutsideLights, Bulb, IndicatorLights, OutsideLights},
         piston_traction::{BBPistonTractionTransfer, BBThrottleBrakeControl, ThrottleBrakeControl},
         power::{BBPowerSupply, Battery, ElectricBus, PowerSupply},
         road_vehicle::{
@@ -20,7 +19,11 @@ use lotus_extra::{
     },
     vehicle::Rattling,
 };
-use lotus_script::{Animation, prelude::*};
+use lotus_script::{
+    Animation,
+    input::{mouse_position, mouse_steering_active},
+    prelude::*,
+};
 
 use crate::{
     cockpit::{BBCockpitNd313, CockpitNd313},
@@ -32,6 +35,15 @@ mod interface;
 mod traction;
 
 const WHEEL_DIAMETER: f32 = 0.9;
+
+const BULB_INDEX_PARKNREAR: usize = 0;
+const BULB_INDEX_PARKNREAR_LED: usize = 1;
+const BULB_INDEX_DIMLIGHT: usize = 2;
+const BULB_INDEX_DIMLIGHT_SCALE: usize = 3;
+const BULB_INDEX_DIMLIGHT_BLUE: usize = 4;
+const BULB_INDEX_BRAKE: usize = 5;
+const BULB_INDEX_BRAKE_LED: usize = 6;
+const BULB_INDEX_REARNBRAKE: usize = 7;
 
 pub struct MyScript {
     modules: Modules,
@@ -92,6 +104,7 @@ impl Default for Modules {
             axles,
             pneumatics,
             throttle_brake_control: ThrottleBrakeControl::new(0, 1, 0.85),
+
             outside_lights: OutsideLights::default()
                 .with_indicator(
                     IndicatorLights::new(
@@ -111,23 +124,24 @@ impl Default for Modules {
                     )
                     .with_sound("snd_IndicatorRelayOn", "snd_IndicatorRelayOff"),
                 )
-                .with_light(
-                    OutsideLightKind::Parking,
-                    StandardLight::new(vec![
-                        Bulb::new("Light_ParkingNRear".to_string())
-                            .with_exp_fade_in_out((20.0, 15.0)),
-                        Bulb::new("Light_ParkingNRear_LED".to_string()),
-                    ]),
+                .add_bulb(
+                    Bulb::new("Light_ParkingNRear".to_string()).with_exp_fade_in_out((20.0, 15.0)),
                 )
-                .with_light(
-                    OutsideLightKind::Dim,
-                    StandardLight::new(vec![
-                        Bulb::new("Light_DimLight".to_string()).with_exp_fade_in_out((20.0, 15.0)),
-                        Bulb::new("Light_DimLight_Scale".to_string())
-                            .with_exp_fade_in_out((20.0, 15.0)),
-                        Bulb::new("Light_DimLight_Blue".to_string())
-                            .with_exp_fade_in_out((20.0, 15.0)),
-                    ]),
+                .add_bulb(Bulb::new("Light_ParkingNRear_LED".to_string()))
+                .add_bulb(
+                    Bulb::new("Light_DimLight".to_string()).with_exp_fade_in_out((20.0, 15.0)),
+                )
+                .add_bulb(
+                    Bulb::new("Light_DimLight_Scale".to_string())
+                        .with_exp_fade_in_out((20.0, 15.0)),
+                )
+                .add_bulb(
+                    Bulb::new("Light_DimLight_Blue".to_string()).with_exp_fade_in_out((20.0, 15.0)),
+                )
+                .add_bulb(Bulb::new("Light_Brake".to_string()).with_exp_fade_in_out((20.0, 15.0)))
+                .add_bulb(Bulb::new("Light_Brake_LED".to_string()))
+                .add_bulb(
+                    Bulb::new("Light_RearNBrake".to_string()).with_exp_fade_in_out((20.0, 15.0)),
                 ),
             cockpit: CockpitNd313::default(),
             doors: Doors::default()
@@ -249,6 +263,8 @@ impl Script for MyScript {
     }
 
     fn tick(&mut self) {
+        self.backbone.reset(BackBoneResetType::Input);
+
         self.modules.tick_interface(&mut self.backbone);
 
         self.backbone.reset(BackBoneResetType::Output);
@@ -257,7 +273,12 @@ impl Script for MyScript {
 
         self.rattling.tick();
 
-        self.backbone.reset(BackBoneResetType::Input);
+        let mp = mouse_position();
+        let mouse_steering_active = mouse_steering_active();
+
+        f32::set_var("Mouse_Position_X", mp.x);
+        f32::set_var("Mouse_Position_Y", mp.y);
+        bool::set_var("Mouse_Steering_Active", mouse_steering_active);
     }
 
     fn on_message(&mut self, msg: lotus_script::message::Message) {
@@ -267,6 +288,9 @@ impl Script for MyScript {
         // on_message is only necessary for the axle with traction
         self.modules.axles[1].on_message(&mut self.backbone.axle, &msg);
         self.modules.interface_on_message(&mut self.backbone, &msg);
+        self.modules
+            .cockpit
+            .on_message(&mut self.backbone.cockpit, &msg);
     }
 }
 

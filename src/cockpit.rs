@@ -1,7 +1,9 @@
 use lotus_extra::{
     bb_system::{
-        basic::{BackBoneResetInputOutput, BackBoneResetType, ModuleInit, ModuleTick},
-        cockpit::{Button, ButtonBehaviour},
+        basic::{
+            BackBoneResetInputOutput, BackBoneResetType, ModuleInit, ModuleOnMessage, ModuleTick,
+        },
+        cockpit::{Button, ButtonBehaviour, IndicatorLight},
         cockpit_enhanced::{
             AutomaticGearBoxModeSwitchGroupSwitch, AutomaticGearBoxModeSwitchProperties,
             BBPneumaticHandbrakeLever, IndicatorSwitch, IndicatorSwitchProperties,
@@ -101,6 +103,14 @@ impl Default for CockpitNd313 {
                 .add_std_il_stop_request_rear()
                 .add_std_il_wheelchair_request()
                 .add_std_il_doors_rear()
+                .add_il_door(IndicatorLight::new(
+                    lotus_extra::bb_system::vdv_dashboard::INDICATOR_LED,
+                    Some("Lm_Door1".to_string()),
+                ))
+                .add_std_il_light_cabin()
+                .add_std_il_light_cabin_secondary()
+                .add_std_il_light_driver()
+                .add_std_il_flashlight()
                 .add_display(VdvDisplay::new(VdvDisplayProperties::new(
                     VdvBusType::ThreeAxlesThreeDoors,
                     VdvRampType::High,
@@ -124,7 +134,6 @@ pub struct BBCockpitNd313 {
 impl ModuleTick<BBCockpitNd313> for CockpitNd313 {
     fn tick(&self, backbone: &mut BBCockpitNd313) {
         self.vdv_dashboard.tick(&mut backbone.vdv_dashboard);
-        self.parking_brake.tick(&mut backbone.parking_brake);
     }
 }
 
@@ -132,6 +141,20 @@ impl ModuleInit<BBCockpitNd313> for CockpitNd313 {
     fn init(&self, backbone: &mut BBCockpitNd313) {
         self.vdv_dashboard.init(&mut backbone.vdv_dashboard);
         self.parking_brake.init(&mut backbone.parking_brake);
+    }
+}
+
+impl ModuleOnMessage<BBCockpitNd313> for CockpitNd313 {
+    fn on_message(
+        &self,
+        backbone: &mut BBCockpitNd313,
+        msg: &lotus_script::message::Message,
+    ) -> bool {
+        self.vdv_dashboard
+            .on_message(&mut backbone.vdv_dashboard, msg)
+            | self
+                .parking_brake
+                .on_message(&mut backbone.parking_brake, msg)
     }
 }
 

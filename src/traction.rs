@@ -1,5 +1,5 @@
 use lotus_extra::bb_system::{
-    basic::{BackBoneResetInputOutput, BackBoneResetType, ModuleTick},
+    basic::{BackBoneResetInputOutput, BackBoneResetType, ModuleOnMessage, ModuleTick},
     piston_traction::{
         BBPistonTraction, BBPistonTractionTransfer, PistonTraction, PistonTractionTransfer,
     },
@@ -19,13 +19,13 @@ impl Default for Traction {
     }
 }
 
-impl Traction {
-    pub fn on_message(
+impl ModuleOnMessage<BBPistonTractionTransfer> for Traction {
+    fn on_message(
         &self,
         backbone: &mut BBPistonTractionTransfer,
         msg: &lotus_script::message::Message,
-    ) {
-        self.transfer.on_message(backbone, msg);
+    ) -> bool {
+        self.transfer.on_message(backbone, msg)
     }
 }
 
