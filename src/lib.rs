@@ -19,11 +19,7 @@ use lotus_extra::{
     },
     vehicle::Rattling,
 };
-use lotus_script::{
-    Animation,
-    input::{mouse_position, mouse_steering_active},
-    prelude::*,
-};
+use lotus_script::{Animation, prelude::*};
 
 use crate::{
     cockpit::{BBCockpitNd313, CockpitNd313},
@@ -263,22 +259,15 @@ impl Script for MyScript {
     }
 
     fn tick(&mut self) {
-        self.backbone.reset(BackBoneResetType::Input);
+        self.backbone.reset_inputs();
 
         self.modules.tick_interface(&mut self.backbone);
 
-        self.backbone.reset(BackBoneResetType::Output);
+        self.backbone.reset_outputs();
 
         self.modules.tick(&mut self.backbone);
 
         self.rattling.tick();
-
-        let mp = mouse_position();
-        let mouse_steering_active = mouse_steering_active();
-
-        f32::set_var("Mouse_Position_X", mp.x);
-        f32::set_var("Mouse_Position_Y", mp.y);
-        bool::set_var("Mouse_Steering_Active", mouse_steering_active);
     }
 
     fn on_message(&mut self, msg: lotus_script::message::Message) {
