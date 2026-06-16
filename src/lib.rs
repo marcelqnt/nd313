@@ -91,9 +91,9 @@ impl Default for Modules {
             steering: Steering::new(SteeringProperties::new(40.0)),
 
             powersupply: PowerSupply::new(
-                vec![Battery],
+                vec![Battery::new(true)],
                 vec![
-                    ElectricBus::new(vec![0], 0.75),
+                    ElectricBus::new(vec![0], 0.75).with_send_power_signal_message(),
                     ElectricBus::new(vec![0], 0.75),
                 ],
             ),
@@ -237,7 +237,6 @@ impl ModuleTick<Backbone> for Modules {
 
 impl ModuleInit<Backbone> for Modules {
     fn init(&self, backbone: &mut Backbone) {
-        log::info!("Modules init");
         self.pneumatics.init(&mut backbone.pneumatics);
         self.powersupply.init(&mut backbone.powersupply);
         self.outside_lights.init(&mut backbone.outside_lights);
@@ -280,6 +279,8 @@ impl Script for MyScript {
         self.modules
             .cockpit
             .on_message(&mut self.backbone.cockpit, &msg);
+
+        log::info!("Message received: {:?}", msg);
     }
 }
 
