@@ -1,17 +1,25 @@
 use lotus_extra::{
-    bb_system::{basic::BackBone, cockpit_enhanced::IgnitionSwitchStep, lights::IndicatorState},
+    bb_system::{
+        VehicleInterface, basic::BackBone, cockpit_enhanced::IgnitionSwitchStep,
+        lights::IndicatorState,
+    },
     math::IfElse,
     messages::{self, std::RetarderRequest},
 };
-use lotus_script::message;
+use lotus_script::{message, prelude::*};
 
 use crate::{Backbone, Modules};
 
 const DOORS_MAX_SPEED_MPS: f32 = 3.0 / 3.6;
 const MIN_THROTTLE_RELEASE_STOP_BRAKE: f32 = 0.1;
 
-impl Modules {
-    pub fn tick_interface(&mut self, backbone: &mut Backbone) {
+impl VehicleInterface<Backbone> for Modules {
+    fn after_init(&mut self, _backbone: &mut Backbone) {
+        log::info!("Initializing script ==========================================");
+        set_var("Lm_MasterError", 0.0);
+    }
+
+    fn tick_interface(&mut self, backbone: &mut Backbone) {
         self.powersupply_input(backbone);
 
         self.pneumatics_input(backbone);
@@ -29,6 +37,15 @@ impl Modules {
         self.send_messages(backbone);
     }
 
+    fn interface_on_message(&mut self, backbone: &mut Backbone, msg: &message::Message) {
+        let _ = msg.handle(|g: messages::std::AutomaticGearboxCurrentGear| {
+            backbone.cockpit.vdv_dashboard.current_gear.set(g);
+            Ok(())
+        });
+    }
+}
+
+impl Modules {
     fn powersupply_input(&self, backbone: &mut Backbone) {
         let bb_powersupply = &mut backbone.powersupply;
 
@@ -236,13 +253,5 @@ impl Modules {
         });
     }
 
-    fn send_messages(&mut self, backbone: &mut Backbone) {}
-
-    pub fn interface_on_message(&mut self, backbone: &mut Backbone, msg: &message::Message) {
-        msg.handle(|g: messages::std::AutomaticGearboxCurrentGear| {
-            backbone.cockpit.vdv_dashboard.current_gear.set(g);
-            Ok(())
-        })
-        .unwrap();
-    }
+    fn send_messages(&mut self, _backbone: &mut Backbone) {}
 }

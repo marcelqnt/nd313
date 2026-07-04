@@ -1,10 +1,8 @@
 use lotus_extra::{
+    bb_modules,
     bb_system::{
-        self,
-        basic::{
-            BBSimple, BackBoneResetInputOutput, BackBoneResetType, ModuleInit, ModuleOnMessage,
-            ModuleTick,
-        },
+        self, BBVehicle, TickExtra,
+        basic::BBSimple,
         doors::{
             BBDoors, DoorRelease, DoorUnit, DoorUnitAutomatic, Doors, PneumaticDoor,
             StopBrakeController,
@@ -41,18 +39,13 @@ const BULB_INDEX_BRAKE: usize = 5;
 const BULB_INDEX_BRAKE_LED: usize = 6;
 const BULB_INDEX_REARNBRAKE: usize = 7;
 
-pub struct MyScript {
-    modules: Modules,
-    backbone: Backbone,
-
+struct Nd313Extras {
     rattling: Rattling,
 }
 
-impl Default for MyScript {
+impl Default for Nd313Extras {
     fn default() -> Self {
         Self {
-            modules: Modules::default(),
-            backbone: Backbone::default(),
             rattling: Rattling::builder()
                 .animation(Animation::get("Main").unwrap())
                 .sound_variable("snd_Rattling")
@@ -60,6 +53,14 @@ impl Default for MyScript {
         }
     }
 }
+
+impl TickExtra for Nd313Extras {
+    fn tick_extra(&mut self) {
+        self.rattling.tick();
+    }
+}
+
+type MyScript = BBVehicle<Modules, Backbone, Nd313Extras>;
 
 pub struct Modules {
     axles: Vec<Axle>,
@@ -220,69 +221,42 @@ impl Default for Modules {
     }
 }
 
-impl ModuleTick<Backbone> for Modules {
-    fn tick(&self, backbone: &mut Backbone) {
-        self.pneumatics.tick(&mut backbone.pneumatics);
-        self.throttle_brake_control
-            .tick(&mut backbone.throttle_brake_control);
-        self.steering.tick(&mut backbone.steering);
-        self.cockpit.tick(&mut backbone.cockpit);
-        self.powersupply.tick(&mut backbone.powersupply);
-        self.traction.tick(&mut backbone.traction);
-        self.outside_lights.tick(&mut backbone.outside_lights);
-        self.doors.tick(&mut backbone.doors);
-        self.axles[1].tick(&mut backbone.axle);
-    }
-}
-
-impl ModuleInit<Backbone> for Modules {
-    fn init(&self, backbone: &mut Backbone) {
-        self.pneumatics.init(&mut backbone.pneumatics);
-        self.powersupply.init(&mut backbone.powersupply);
-        self.outside_lights.init(&mut backbone.outside_lights);
-        self.doors.init(&mut backbone.doors);
-        self.axles[1].init(&mut backbone.axle);
-        self.cockpit.init(&mut backbone.cockpit);
+bb_modules! {
+    Modules => Backbone {
+        tick {
+            pneumatics => pneumatics;
+            throttle_brake_control => throttle_brake_control;
+            steering => steering;
+            cockpit => cockpit;
+            powersupply => powersupply;
+            traction => traction;
+            outside_lights => outside_lights;
+            doors => doors;
+            axles[1] => axle;
+        }
+        init {
+            pneumatics => pneumatics;
+            powersupply => powersupply;
+            outside_lights => outside_lights;
+            doors => doors;
+            axles[1] => axle;
+            cockpit => cockpit;
+        }
+        on_action {
+            cockpit => cockpit;
+        }
+        on_message {
+            traction => piston_traction_transfer;
+            axles[1] => axle;
+            cockpit => cockpit;
+        }
+        reset {
+            cockpit, powersupply, traction, throttle_brake_control, outside_lights, doors,
+        }
     }
 }
 
 script!(MyScript);
-
-impl Script for MyScript {
-    fn init(&mut self) {
-        log::info!("Initializing script ==========================================");
-
-        self.modules.init(&mut self.backbone);
-
-        set_var("Lm_MasterError", 0.0);
-    }
-
-    fn tick(&mut self) {
-        self.backbone.reset_inputs();
-
-        self.modules.tick_interface(&mut self.backbone);
-
-        self.backbone.reset_outputs();
-
-        self.modules.tick(&mut self.backbone);
-
-        self.rattling.tick();
-    }
-
-    fn on_message(&mut self, msg: lotus_script::message::Message) {
-        self.modules
-            .traction
-            .on_message(&mut self.backbone.piston_traction_transfer, &msg);
-        // on_message is only necessary for the axle with traction
-        self.modules.axles[1].on_message(&mut self.backbone.axle, &msg);
-        self.modules.interface_on_message(&mut self.backbone, &msg);
-        self.modules
-            .cockpit
-            .on_message(&mut self.backbone.cockpit, &msg);
-
-        log::info!("Message received: {:?}", msg);
-    }
-}
 
 #[derive(Default)]
 pub struct Backbone {
@@ -298,15 +272,4 @@ pub struct Backbone {
     pub axle: BBAxle,
     // own
     pub retarder_request: BBSimple<i8>,
-}
-
-impl BackBoneResetInputOutput for Backbone {
-    fn reset(&mut self, reset_type: BackBoneResetType) {
-        self.cockpit.reset(reset_type);
-        self.powersupply.reset(reset_type);
-        self.traction.reset(reset_type);
-        self.throttle_brake_control.reset(reset_type);
-        self.outside_lights.reset(reset_type);
-        self.doors.reset(reset_type);
-    }
 }

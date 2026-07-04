@@ -1,7 +1,8 @@
 use lotus_extra::{
     bb_system::{
         basic::{
-            BackBoneResetInputOutput, BackBoneResetType, ModuleInit, ModuleOnMessage, ModuleTick,
+            BackBoneResetInputOutput, BackBoneResetType, ModuleInit, ModuleOnAction,
+            ModuleOnMessage, ModuleTick,
         },
         cockpit::{Button, ButtonBehaviour, IndicatorLight},
         cockpit_enhanced::{
@@ -17,6 +18,7 @@ use lotus_extra::{
     input::InputEvent,
     messages::std::AutomaticGearboxMode,
 };
+use lotus_script::action::ActionEvent;
 
 pub struct CockpitNd313 {
     pub vdv_dashboard: VdvDashboard<BBRoadVehiclePneumatics>,
@@ -144,6 +146,16 @@ impl ModuleInit<BBCockpitNd313> for CockpitNd313 {
     }
 }
 
+impl ModuleOnAction<BBCockpitNd313> for CockpitNd313 {
+    fn on_action(&self, backbone: &mut BBCockpitNd313, action: &ActionEvent) -> bool {
+        self.vdv_dashboard
+            .on_action(&mut backbone.vdv_dashboard, action)
+            | self
+                .parking_brake
+                .on_action(&mut backbone.parking_brake, action)
+    }
+}
+
 impl ModuleOnMessage<BBCockpitNd313> for CockpitNd313 {
     fn on_message(
         &self,
@@ -152,9 +164,6 @@ impl ModuleOnMessage<BBCockpitNd313> for CockpitNd313 {
     ) -> bool {
         self.vdv_dashboard
             .on_message(&mut backbone.vdv_dashboard, msg)
-            | self
-                .parking_brake
-                .on_message(&mut backbone.parking_brake, msg)
     }
 }
 
