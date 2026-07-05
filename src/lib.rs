@@ -152,9 +152,9 @@ impl Default for Modules {
                 )
                 .add_door(DoorUnit::new(
                     PneumaticDoor::new(
-                        0.000_003_125,
+                        2.5 / 698_700.0,
                         bb_system::doors::PneumaticDoorPressureRate::Linear {
-                            rate: 0.000_000_625,
+                            rate: 0.5 / 698_700.0,
                             p_end_normalized: 0.2,
                         },
                         (0.1, 0.1),
@@ -168,9 +168,9 @@ impl Default for Modules {
                 ))
                 .add_door(DoorUnit::new(
                     PneumaticDoor::new(
-                        0.000_003,
+                        2.4 / 698_700.0,
                         bb_system::doors::PneumaticDoorPressureRate::Linear {
-                            rate: 0.000_000_5,
+                            rate: 0.4 / 698_700.0,
                             p_end_normalized: 0.21,
                         },
                         (0.105, 0.09),
@@ -184,10 +184,10 @@ impl Default for Modules {
                 ))
                 .add_door(DoorUnit::new(
                     PneumaticDoor::new(
-                        0.000_007_5,
+                        6.0 / 698_700.0,
                         bb_system::doors::PneumaticDoorPressureRate::Linear {
-                            rate: 0.000_000_45,
-                            p_end_normalized: 0.375,
+                            rate: 0.36 / 698_700.0,
+                            p_end_normalized: 0.3,
                         },
                         (0.01, 0.01),
                     )
@@ -201,10 +201,10 @@ impl Default for Modules {
                 ))
                 .add_door(DoorUnit::new(
                     PneumaticDoor::new(
-                        0.000_007_5,
+                        6.0 / 698_700.0,
                         bb_system::doors::PneumaticDoorPressureRate::Linear {
-                            rate: 0.000_000_45,
-                            p_end_normalized: 0.375,
+                            rate: 0.36 / 698_700.0,
+                            p_end_normalized: 0.3,
                         },
                         (0.01, 0.01),
                     )
