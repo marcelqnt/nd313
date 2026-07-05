@@ -1,7 +1,8 @@
 use lotus_extra::{
     bb_system::{
         VehicleInterface, basic::BackBone, cockpit_enhanced::IgnitionSwitchStep,
-        lights::IndicatorState, vdv_dashboard::DoorLeafLockState,
+        lights::IndicatorState,
+        vdv_dashboard::{DoorLeafLockState, VdvDisplayDoorState},
     },
     math::IfElse,
     messages::{self, std::RetarderRequest},
@@ -199,6 +200,34 @@ impl Modules {
             .stop_sign(2)
             .forward_on_changed(&mut bb_cockpit.stop_request_rear);
 
+        bb_doors
+            .stop_brake()
+            .forward_on_changed(&mut bb_cockpit.stop_brake);
+
+        let door_released = bb_doors.release_target(0).get_state()
+            && bb_doors.release_activatable.get_state();
+
+        bb_cockpit.display_door_1_1.set_if_different(vdv_display_door_state(
+            bb_doors.door_closed(0, 0).get_state(),
+            bb_doors.wing_lock(0, 0).get_state(),
+            door_released,
+        ));
+        bb_cockpit.display_door_1_2.set_if_different(vdv_display_door_state(
+            bb_doors.door_closed(0, 1).get_state(),
+            bb_doors.wing_lock(0, 1).get_state(),
+            door_released,
+        ));
+        bb_cockpit.display_door_2.set_if_different(vdv_display_door_state(
+            bb_doors.door_closed(1, 0).get_state(),
+            false,
+            door_released,
+        ));
+        bb_cockpit.display_door_3.set_if_different(vdv_display_door_state(
+            bb_doors.door_closed(2, 0).get_state(),
+            false,
+            door_released,
+        ));
+
         bb_cockpit
             .engine_running
             .set_if_different(backbone.piston_traction_transfer.rpm > 100.0);
@@ -264,4 +293,16 @@ impl Modules {
     }
 
     fn send_messages(&mut self, _backbone: &mut Backbone) {}
+}
+
+fn vdv_display_door_state(closed: bool, blocked: bool, released: bool) -> VdvDisplayDoorState {
+    if blocked {
+        VdvDisplayDoorState::Blocked
+    } else if !closed {
+        VdvDisplayDoorState::Open
+    } else if released {
+        VdvDisplayDoorState::Released
+    } else {
+        VdvDisplayDoorState::Closed
+    }
 }
