@@ -1,7 +1,7 @@
 use lotus_extra::{
     bb_system::{
         VehicleInterface, basic::BackBone, cockpit_enhanced::IgnitionSwitchStep,
-        lights::IndicatorState,
+        lights::IndicatorState, vdv_dashboard::DoorLeafLockState,
     },
     math::IfElse,
     messages::{self, std::RetarderRequest},
@@ -179,22 +179,24 @@ impl Modules {
             .blink_relay()
             .forward_on_changed(&mut bb_cockpit.indicators_bulbs);
 
-        bb_doors.door_closed(0).call_on_changed(|closed| {
-            bb_cockpit.il_doors_target[0].set(!closed);
-        });
+        bb_doors
+            .door_closed(0, 0)
+            .call_on_changed_two(bb_doors.door_closed(0, 1), |closed1, closed2| {
+                bb_cockpit.il_doors_target[0].set(!(closed1 && closed2));
+            });
 
         bb_doors
-            .door_closed(2)
-            .call_on_changed_two(bb_doors.door_closed(3), |closed1, closed2| {
+            .door_closed(1, 0)
+            .call_on_changed_two(bb_doors.door_closed(2, 0), |closed1, closed2| {
                 bb_cockpit.rear_doors = !(closed1 && closed2);
             });
 
         bb_doors
-            .stop_sign(2)
+            .stop_sign(1)
             .forward_on_changed(&mut bb_cockpit.stop_request_middle);
 
         bb_doors
-            .stop_sign(3)
+            .stop_sign(2)
             .forward_on_changed(&mut bb_cockpit.stop_request_rear);
 
         bb_cockpit
@@ -240,16 +242,24 @@ impl Modules {
             .call_on_changed(|pos| {
                 if pos {
                     self.doors.toggle_door(bb_doors, 0);
-                    self.doors.toggle_door(bb_doors, 1);
                 }
             });
 
         bb_cockpit.btn_doors[1].state().call_on_changed(|pos| {
-            self.doors.set_door_target(bb_doors, 2, pos);
+            self.doors.set_door_target(bb_doors, 1, pos);
         });
 
         bb_cockpit.btn_doors[2].state().call_on_changed(|pos| {
-            self.doors.set_door_target(bb_doors, 3, pos);
+            self.doors.set_door_target(bb_doors, 2, pos);
+        });
+
+        bb_cockpit.sw_door_leaf_lock.state().call_on_changed(|state| {
+            bb_doors
+                .wing_lock(0, 0)
+                .set(state == DoorLeafLockState::Left);
+            bb_doors
+                .wing_lock(0, 1)
+                .set(state == DoorLeafLockState::Right);
         });
     }
 

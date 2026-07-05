@@ -4,7 +4,8 @@ use lotus_extra::{
         self, BBVehicle, TickExtra,
         basic::BBSimple,
         doors::{
-            BBDoors, DoorRelease, DoorUnit, DoorUnitAutomatic, Doors, PneumaticDoor,
+            BBDoors, DoorRelease, DoorUnit, DoorUnitAutomatic, DoorUnitWing,
+            DoorUnitWingLockMode, DoorUnitWingLockRelease, Doors, PneumaticDoor,
             StopBrakeController,
         },
         lights::{BBOutsideLights, Bulb, IndicatorLights, OutsideLights},
@@ -151,68 +152,78 @@ impl Default for Modules {
                         .add_sound_deactivate("snd_StopBrake_Release"),
                 )
                 .add_door(DoorUnit::new(
-                    PneumaticDoor::new(
-                        2.5 / 698_700.0,
-                        bb_system::doors::PneumaticDoorPressureRate::Linear {
-                            rate: 0.5 / 698_700.0,
-                            p_end_normalized: 0.2,
-                        },
-                        (0.1, 0.1),
-                    )
-                    .with_friction(0.1)
-                    .with_position_var("Door_1_1_Pos".to_string())
-                    .with_sound_open("snd_Door11_Open")
-                    .with_sound_close("snd_Door11_Close"),
+                    vec![
+                        DoorUnitWing::new(
+                            PneumaticDoor::new(
+                                2.5 / 698_700.0,
+                                bb_system::doors::PneumaticDoorPressureRate::Linear {
+                                    rate: 0.5 / 698_700.0,
+                                    p_end_normalized: 0.2,
+                                },
+                                (0.1, 0.1),
+                            )
+                            .with_friction(0.1)
+                            .with_position_var("Door_1_1_Pos".to_string())
+                            .with_sound_open("snd_Door11_Open")
+                            .with_sound_close("snd_Door11_Close"),
+                        )
+                        .with_wing_lock_mode(DoorUnitWingLockMode::BlockOpen)
+                        .with_wing_lock_release(DoorUnitWingLockRelease::SyncOpen),
+                        DoorUnitWing::new(
+                            PneumaticDoor::new(
+                                2.4 / 698_700.0,
+                                bb_system::doors::PneumaticDoorPressureRate::Linear {
+                                    rate: 0.4 / 698_700.0,
+                                    p_end_normalized: 0.21,
+                                },
+                                (0.105, 0.09),
+                            )
+                            .with_friction(0.11)
+                            .with_position_var("Door_1_2_Pos".to_string())
+                            .with_sound_open("snd_Door12_Open")
+                            .with_sound_close("snd_Door12_Close"),
+                        )
+                        .with_wing_lock_mode(DoorUnitWingLockMode::BlockOpen)
+                        .with_wing_lock_release(DoorUnitWingLockRelease::SyncOpen),
+                    ],
                     DoorUnitAutomatic::Manual,
                     Some(0),
                 ))
                 .add_door(DoorUnit::new(
-                    PneumaticDoor::new(
-                        2.4 / 698_700.0,
-                        bb_system::doors::PneumaticDoorPressureRate::Linear {
-                            rate: 0.4 / 698_700.0,
-                            p_end_normalized: 0.21,
-                        },
-                        (0.105, 0.09),
-                    )
-                    .with_friction(0.11)
-                    .with_position_var("Door_1_2_Pos".to_string())
-                    .with_sound_open("snd_Door12_Open")
-                    .with_sound_close("snd_Door12_Close"),
-                    DoorUnitAutomatic::Manual,
-                    Some(0),
-                ))
-                .add_door(DoorUnit::new(
-                    PneumaticDoor::new(
-                        6.0 / 698_700.0,
-                        bb_system::doors::PneumaticDoorPressureRate::Linear {
-                            rate: 0.36 / 698_700.0,
-                            p_end_normalized: 0.3,
-                        },
-                        (0.01, 0.01),
-                    )
-                    .with_friction(0.2)
-                    .with_position_var("Door_2_1_Pos".to_string())
-                    .with_sound_open("snd_Door2_Open")
-                    .with_sound_close("snd_Door2_Close")
-                    .with_sound_close_bump("snd_Door2_Close_End"),
+                    vec![DoorUnitWing::new(
+                        PneumaticDoor::new(
+                            6.0 / 698_700.0,
+                            bb_system::doors::PneumaticDoorPressureRate::Linear {
+                                rate: 0.36 / 698_700.0,
+                                p_end_normalized: 0.3,
+                            },
+                            (0.01, 0.01),
+                        )
+                        .with_friction(0.2)
+                        .with_position_var("Door_2_1_Pos".to_string())
+                        .with_sound_open("snd_Door2_Open")
+                        .with_sound_close("snd_Door2_Close")
+                        .with_sound_close_bump("snd_Door2_Close_End"),
+                    )],
                     DoorUnitAutomatic::Timer(5.5),
                     Some(0),
                 ))
                 .add_door(DoorUnit::new(
-                    PneumaticDoor::new(
-                        6.0 / 698_700.0,
-                        bb_system::doors::PneumaticDoorPressureRate::Linear {
-                            rate: 0.36 / 698_700.0,
-                            p_end_normalized: 0.3,
-                        },
-                        (0.01, 0.01),
-                    )
-                    .with_friction(0.2)
-                    .with_position_var("Door_3_1_Pos".to_string())
-                    .with_sound_open("snd_Door3_Open")
-                    .with_sound_close("snd_Door3_Close")
-                    .with_sound_close_bump("snd_Door3_Close_End"),
+                    vec![DoorUnitWing::new(
+                        PneumaticDoor::new(
+                            6.0 / 698_700.0,
+                            bb_system::doors::PneumaticDoorPressureRate::Linear {
+                                rate: 0.36 / 698_700.0,
+                                p_end_normalized: 0.3,
+                            },
+                            (0.01, 0.01),
+                        )
+                        .with_friction(0.2)
+                        .with_position_var("Door_3_1_Pos".to_string())
+                        .with_sound_open("snd_Door3_Open")
+                        .with_sound_close("snd_Door3_Close")
+                        .with_sound_close_bump("snd_Door3_Close_End"),
+                    )],
                     DoorUnitAutomatic::Timer(5.5),
                     Some(0),
                 )),
