@@ -35,23 +35,25 @@ mod traction;
 
 const WHEEL_DIAMETER: f32 = 0.9;
 
-pub(crate) const BULB_INDEX_PARKNREAR: usize = 0;
-pub(crate) const BULB_INDEX_PARKNREAR_LED: usize = 1;
-pub(crate) const BULB_INDEX_DIMLIGHT: usize = 2;
-pub(crate) const BULB_INDEX_DIMLIGHT_SCALE: usize = 3;
-pub(crate) const BULB_INDEX_DIMLIGHT_BLUE: usize = 4;
-pub(crate) const BULB_INDEX_BRAKE: usize = 5;
-pub(crate) const BULB_INDEX_BRAKE_LED: usize = 6;
-pub(crate) const BULB_INDEX_REARNBRAKE: usize = 7;
-
 pub(crate) const DOORS_MAX_SPEED_MPS: f32 = 3.0 / 3.6;
 pub(crate) const MIN_THROTTLE_RELEASE_STOP_BRAKE: f32 = 0.1;
 
 pub const NOMINAL_VOLTAGE: f32 = 24.0;
-pub const ELECTRICITY_INDEX_BATTERY: usize = 0;
-pub const ELECTRICITY_INDEX_MIN_VOLTAGE_RELAY: usize = 1;
-pub const ELECTRICITY_INDEX_BUS_1: usize = 2;
-pub const ELECTRICITY_INDEX_BUS_2: usize = 3;
+
+/// Von `add_unit_get_index` / `add_bulb_get_index` beim Aufbau befüllt — keine festen Konstanten.
+pub(crate) struct Nd313Indices {
+    pub electricity_min_voltage_relay: usize,
+    pub electricity_bus_1: usize,
+    pub electricity_bus_2: usize,
+    pub bulb_park_n_rear: usize,
+    pub bulb_park_n_rear_led: usize,
+    pub bulb_dim_light: usize,
+    pub bulb_dim_light_scale: usize,
+    pub bulb_dim_light_blue: usize,
+    pub bulb_brake: usize,
+    pub bulb_brake_led: usize,
+    pub bulb_rear_n_brake: usize,
+}
 
 struct Nd313Extras {
     rattling: Rattling,
@@ -86,6 +88,7 @@ pub struct Modules {
     pub(crate) doors: Doors,
     cockpit: CockpitNd313,
     steering: Steering,
+    pub(crate) indices: Nd313Indices,
 }
 
 impl Default for Modules {
@@ -102,72 +105,93 @@ impl Default for Modules {
             .axles(axles.clone())
             .build();
 
+        let mut electricity = ElectricPower::default();
+        let electricity_battery = electricity.add_unit_get_index(
+            ElectricUnit::new(vec![], true)
+                .with_battery(ElectricBatteryProperties::new(NOMINAL_VOLTAGE)),
+        );
+        let electricity_min_voltage_relay = electricity.add_unit_get_index(
+            ElectricUnit::new(vec![electricity_battery], true).with_limiter(
+                ElectricLimiter::default().with_voltage_limiter(10.0, Some(18.0)),
+            ),
+        );
+        let electricity_bus_1 = electricity.add_unit_get_index(
+            ElectricUnit::new(vec![electricity_min_voltage_relay], false)
+                .with_send_power_signal_message(SendPowerSignalMessage::new(
+                    messages::std::PowerSignalCabin::A,
+                    MessageTarget::broadcast_all(),
+                )),
+        );
+        let electricity_bus_2 = electricity.add_unit_get_index(ElectricUnit::new(
+            vec![electricity_min_voltage_relay],
+            false,
+        ));
+
+        let mut outside_lights = OutsideLights::default().with_indicator(
+            IndicatorLights::new(
+                vec![
+                    Bulb::new("Light_Indicator_Left".to_string())
+                        .with_exp_fade_in_out((20.0, 15.0)),
+                    Bulb::new("Light_Indicator_Left_LED".to_string()),
+                ],
+                vec![
+                    Bulb::new("Light_Indicator_Right".to_string())
+                        .with_exp_fade_in_out((20.0, 15.0)),
+                    Bulb::new("Light_Indicator_Right_LED".to_string()),
+                ],
+                0.40,
+                0.35,
+                0.43,
+            )
+            .with_sound("snd_IndicatorRelayOn", "snd_IndicatorRelayOff"),
+        );
+        let bulb_park_n_rear = outside_lights.add_bulb_get_index(
+            Bulb::new("Light_ParkingNRear".to_string()).with_exp_fade_in_out((20.0, 15.0)),
+        );
+        let bulb_park_n_rear_led =
+            outside_lights.add_bulb_get_index(Bulb::new("Light_ParkingNRear_LED".to_string()));
+        let bulb_dim_light = outside_lights.add_bulb_get_index(
+            Bulb::new("Light_DimLight".to_string()).with_exp_fade_in_out((20.0, 15.0)),
+        );
+        let bulb_dim_light_scale = outside_lights.add_bulb_get_index(
+            Bulb::new("Light_DimLight_Scale".to_string()).with_exp_fade_in_out((20.0, 15.0)),
+        );
+        let bulb_dim_light_blue = outside_lights.add_bulb_get_index(
+            Bulb::new("Light_DimLight_Blue".to_string()).with_exp_fade_in_out((20.0, 15.0)),
+        );
+        let bulb_brake = outside_lights.add_bulb_get_index(
+            Bulb::new("Light_Brake".to_string()).with_exp_fade_in_out((20.0, 15.0)),
+        );
+        let bulb_brake_led =
+            outside_lights.add_bulb_get_index(Bulb::new("Light_Brake_LED".to_string()));
+        let bulb_rear_n_brake = outside_lights.add_bulb_get_index(
+            Bulb::new("Light_RearNBrake".to_string()).with_exp_fade_in_out((20.0, 15.0)),
+        );
+
+        let indices = Nd313Indices {
+            electricity_min_voltage_relay,
+            electricity_bus_1,
+            electricity_bus_2,
+            bulb_park_n_rear,
+            bulb_park_n_rear_led,
+            bulb_dim_light,
+            bulb_dim_light_scale,
+            bulb_dim_light_blue,
+            bulb_brake,
+            bulb_brake_led,
+            bulb_rear_n_brake,
+        };
+
         Self {
             steering: Steering::new(SteeringProperties::new(40.0)),
 
-            electricity: ElectricPower::new(vec![
-                ElectricUnit::new(Vec::new(), true)
-                    .with_battery(ElectricBatteryProperties::new(NOMINAL_VOLTAGE)),
-                ElectricUnit::new(vec![ELECTRICITY_INDEX_BATTERY], true).with_limiter(
-                    ElectricLimiter::default().with_voltage_limiter(10.0, Some(18.0)),
-                ),
-                ElectricUnit::new(vec![ELECTRICITY_INDEX_MIN_VOLTAGE_RELAY], false)
-                    .with_send_power_signal_message(SendPowerSignalMessage::new(
-                        messages::std::PowerSignalCabin::A,
-                        MessageTarget::broadcast_all(),
-                    )),
-                ElectricUnit::new(vec![ELECTRICITY_INDEX_MIN_VOLTAGE_RELAY], false),
-            ]),
+            electricity,
 
-            // electricity: PowerSupply::new(
-            //     vec![Battery::new(true)],
-            //     vec![
-            //         ElectricBus::new(vec![0], 0.75).with_send_power_signal_message(),
-            //         ElectricBus::new(vec![0], 0.75),
-            //     ],
-            // ),
             axles,
             pneumatics,
             throttle_brake_control: ThrottleBrakeControl::new(0, 1, 0.85),
 
-            outside_lights: OutsideLights::default()
-                .with_indicator(
-                    IndicatorLights::new(
-                        vec![
-                            Bulb::new("Light_Indicator_Left".to_string())
-                                .with_exp_fade_in_out((20.0, 15.0)),
-                            Bulb::new("Light_Indicator_Left_LED".to_string()),
-                        ],
-                        vec![
-                            Bulb::new("Light_Indicator_Right".to_string())
-                                .with_exp_fade_in_out((20.0, 15.0)),
-                            Bulb::new("Light_Indicator_Right_LED".to_string()),
-                        ],
-                        0.40,
-                        0.35,
-                        0.43,
-                    )
-                    .with_sound("snd_IndicatorRelayOn", "snd_IndicatorRelayOff"),
-                )
-                .add_bulb(
-                    Bulb::new("Light_ParkingNRear".to_string()).with_exp_fade_in_out((20.0, 15.0)),
-                )
-                .add_bulb(Bulb::new("Light_ParkingNRear_LED".to_string()))
-                .add_bulb(
-                    Bulb::new("Light_DimLight".to_string()).with_exp_fade_in_out((20.0, 15.0)),
-                )
-                .add_bulb(
-                    Bulb::new("Light_DimLight_Scale".to_string())
-                        .with_exp_fade_in_out((20.0, 15.0)),
-                )
-                .add_bulb(
-                    Bulb::new("Light_DimLight_Blue".to_string()).with_exp_fade_in_out((20.0, 15.0)),
-                )
-                .add_bulb(Bulb::new("Light_Brake".to_string()).with_exp_fade_in_out((20.0, 15.0)))
-                .add_bulb(Bulb::new("Light_Brake_LED".to_string()))
-                .add_bulb(
-                    Bulb::new("Light_RearNBrake".to_string()).with_exp_fade_in_out((20.0, 15.0)),
-                ),
+            outside_lights,
             cockpit: CockpitNd313::default(),
             doors: Doors::default()
                 .add_release(DoorRelease)
@@ -255,6 +279,7 @@ impl Default for Modules {
                     Some(0),
                 )),
             traction: Traction::default(),
+            indices,
         }
     }
 }

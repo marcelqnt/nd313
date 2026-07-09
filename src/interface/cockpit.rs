@@ -1,21 +1,22 @@
-use lotus_extra::bb_system::{DomainInterface, basic::BackBone};
 use lotus_extra::bb_system::vdv_dashboard::VdvDisplayDoorState;
+use lotus_extra::bb_system::{basic::BackBone, DomainInterface};
 
-use crate::{Backbone, ELECTRICITY_INDEX_BUS_1, Modules, NOMINAL_VOLTAGE};
+use crate::{Backbone, Modules, NOMINAL_VOLTAGE};
 
 #[derive(Default)]
 pub struct Nd313CockpitInterface;
 
 impl DomainInterface<Modules, Backbone> for Nd313CockpitInterface {
-    fn wire(&mut self, _modules: &Modules, backbone: &mut Backbone) {
+    fn wire(&mut self, modules: &Modules, backbone: &mut Backbone) {
+        let idx = &modules.indices;
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_doors = &mut backbone.doors;
 
         bb_cockpit.unified_voltage =
-            backbone.electricity.unit_voltage(ELECTRICITY_INDEX_BUS_1) / NOMINAL_VOLTAGE;
+            backbone.electricity.unit_voltage(idx.electricity_bus_1) / NOMINAL_VOLTAGE;
         bb_cockpit.unified_voltage_available = backbone
             .electricity
-            .unit_voltage_available(ELECTRICITY_INDEX_BUS_1)
+            .unit_voltage_available(idx.electricity_bus_1)
             / NOMINAL_VOLTAGE;
 
         bb_cockpit.pneumatics = backbone.pneumatics;

@@ -1,4 +1,4 @@
-use lotus_extra::bb_system::{DomainInterface, basic::BackBone};
+use lotus_extra::bb_system::{basic::BackBone, DomainInterface};
 use lotus_extra::math::IfElse;
 
 use crate::{Backbone, Modules};

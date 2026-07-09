@@ -1,16 +1,14 @@
-use lotus_extra::bb_system::{DomainInterface, basic::BackBone};
 use lotus_extra::bb_system::vdv_dashboard::DoorLeafLockState;
+use lotus_extra::bb_system::{basic::BackBone, DomainInterface};
 
-use crate::{
-    Backbone, ELECTRICITY_INDEX_BUS_2, Modules, MIN_THROTTLE_RELEASE_STOP_BRAKE,
-    DOORS_MAX_SPEED_MPS,
-};
+use crate::{Backbone, Modules, DOORS_MAX_SPEED_MPS, MIN_THROTTLE_RELEASE_STOP_BRAKE};
 
 #[derive(Default)]
 pub struct Nd313DoorsInterface;
 
 impl DomainInterface<Modules, Backbone> for Nd313DoorsInterface {
     fn wire(&mut self, modules: &Modules, backbone: &mut Backbone) {
+        let idx = &modules.indices;
         let bb_doors = &mut backbone.doors;
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_powersupply = &mut backbone.electricity;
@@ -18,7 +16,7 @@ impl DomainInterface<Modules, Backbone> for Nd313DoorsInterface {
         bb_doors.set_p_available(800_000.0);
 
         bb_powersupply
-            .unit_active(ELECTRICITY_INDEX_BUS_2)
+            .unit_active(idx.electricity_bus_2)
             .forward_on_changed(&mut bb_doors.power_available);
 
         bb_doors.set_throttle_pressed(
@@ -31,7 +29,7 @@ impl DomainInterface<Modules, Backbone> for Nd313DoorsInterface {
             vehicle_stopped
                 && backbone
                     .electricity
-                    .unit_active(ELECTRICITY_INDEX_BUS_2)
+                    .unit_active(idx.electricity_bus_2)
                     .get_state(),
         );
 

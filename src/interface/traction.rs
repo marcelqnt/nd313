@@ -1,10 +1,10 @@
 use lotus_extra::{
-    bb_system::{DomainInterface, basic::BackBone},
+    bb_system::{basic::BackBone, DomainInterface},
     math::IfElse,
     messages::std::{EngineStartStop, RetarderRequest},
 };
 
-use crate::{Backbone, ELECTRICITY_INDEX_MIN_VOLTAGE_RELAY, Modules};
+use crate::{Backbone, Modules};
 
 #[derive(Default)]
 pub struct Nd313TractionInterface;
@@ -14,7 +14,7 @@ impl DomainInterface<Modules, Backbone> for Nd313TractionInterface {
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_electricity = &mut backbone.electricity;
 
-        let elec_source = bb_electricity.unit_active(ELECTRICITY_INDEX_MIN_VOLTAGE_RELAY);
+        let elec_source = bb_electricity.unit_active(modules.indices.electricity_min_voltage_relay);
 
         if bb_cockpit.ignition_switch.state().changed() || elec_source.changed() {
             let state = if !elec_source.get_state() {
