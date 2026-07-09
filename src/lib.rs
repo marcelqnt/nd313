@@ -35,14 +35,17 @@ mod traction;
 
 const WHEEL_DIAMETER: f32 = 0.9;
 
-const BULB_INDEX_PARKNREAR: usize = 0;
-const BULB_INDEX_PARKNREAR_LED: usize = 1;
-const BULB_INDEX_DIMLIGHT: usize = 2;
-const BULB_INDEX_DIMLIGHT_SCALE: usize = 3;
-const BULB_INDEX_DIMLIGHT_BLUE: usize = 4;
-const BULB_INDEX_BRAKE: usize = 5;
-const BULB_INDEX_BRAKE_LED: usize = 6;
-const BULB_INDEX_REARNBRAKE: usize = 7;
+pub(crate) const BULB_INDEX_PARKNREAR: usize = 0;
+pub(crate) const BULB_INDEX_PARKNREAR_LED: usize = 1;
+pub(crate) const BULB_INDEX_DIMLIGHT: usize = 2;
+pub(crate) const BULB_INDEX_DIMLIGHT_SCALE: usize = 3;
+pub(crate) const BULB_INDEX_DIMLIGHT_BLUE: usize = 4;
+pub(crate) const BULB_INDEX_BRAKE: usize = 5;
+pub(crate) const BULB_INDEX_BRAKE_LED: usize = 6;
+pub(crate) const BULB_INDEX_REARNBRAKE: usize = 7;
+
+pub(crate) const DOORS_MAX_SPEED_MPS: f32 = 3.0 / 3.6;
+pub(crate) const MIN_THROTTLE_RELEASE_STOP_BRAKE: f32 = 0.1;
 
 pub const NOMINAL_VOLTAGE: f32 = 24.0;
 pub const ELECTRICITY_INDEX_BATTERY: usize = 0;
