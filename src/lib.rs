@@ -25,6 +25,7 @@ use lotus_script::{Animation, prelude::*};
 
 use crate::{
     cockpit::{BBCockpitNd313, CockpitNd313},
+    interface::Nd313Interface,
     traction::{BBTraction, Traction},
 };
 
@@ -70,16 +71,16 @@ impl TickExtra for Nd313Extras {
     }
 }
 
-type MyScript = BBVehicle<Modules, Backbone, Nd313Extras>;
+type MyScript = BBVehicle<Modules, Backbone, Nd313Extras, Nd313Interface>;
 
 pub struct Modules {
     axles: Vec<Axle>,
     electricity: ElectricPower,
     pneumatics: RoadVehiclePneumatics,
-    traction: Traction,
+    pub(crate) traction: Traction,
     throttle_brake_control: ThrottleBrakeControl,
     outside_lights: OutsideLights,
-    doors: Doors,
+    pub(crate) doors: Doors,
     cockpit: CockpitNd313,
     steering: Steering,
 }

@@ -22,18 +22,22 @@ use crate::{
 const DOORS_MAX_SPEED_MPS: f32 = 3.0 / 3.6;
 const MIN_THROTTLE_RELEASE_STOP_BRAKE: f32 = 0.1;
 
-impl VehicleInterface<Backbone> for Modules {
-    fn after_init(&mut self, _backbone: &mut Backbone) {
+/// Verdrahtung zwischen den BB-Modulen des nd313 — getrennt von der Modul-Konfiguration.
+#[derive(Default)]
+pub struct Nd313Interface;
+
+impl VehicleInterface<Modules, Backbone> for Nd313Interface {
+    fn after_init(&mut self, _modules: &Modules, _backbone: &mut Backbone) {
         log::info!("Initializing script ==========================================");
         set_var("Lm_MasterError", 0.0);
     }
 
-    fn tick_interface(&mut self, backbone: &mut Backbone) {
+    fn tick_interface(&mut self, modules: &Modules, backbone: &mut Backbone) {
         self.powersupply_input(backbone);
 
         self.pneumatics_input(backbone);
 
-        self.traction_input(backbone);
+        self.traction_input(modules, backbone);
 
         self.steering_input(backbone);
 
@@ -41,12 +45,17 @@ impl VehicleInterface<Backbone> for Modules {
 
         self.cockpit_input(backbone);
 
-        self.doors_input(backbone);
+        self.doors_input(modules, backbone);
 
         self.send_messages(backbone);
     }
 
-    fn interface_on_message(&mut self, backbone: &mut Backbone, msg: &message::Message) {
+    fn interface_on_message(
+        &mut self,
+        _modules: &Modules,
+        backbone: &mut Backbone,
+        msg: &message::Message,
+    ) {
         let _ = msg.handle(|g: messages::std::AutomaticGearboxCurrentGear| {
             backbone.cockpit.vdv_dashboard.current_gear.set(g);
             Ok(())
@@ -54,7 +63,7 @@ impl VehicleInterface<Backbone> for Modules {
     }
 }
 
-impl Modules {
+impl Nd313Interface {
     fn powersupply_input(&self, backbone: &mut Backbone) {
         let bb_electricity = &mut backbone.electricity;
 
@@ -71,7 +80,7 @@ impl Modules {
             });
     }
 
-    fn pneumatics_input(&mut self, backbone: &mut Backbone) {
+    fn pneumatics_input(&self, backbone: &mut Backbone) {
         backbone.pneumatics.n_engine_rpm = backbone.piston_traction_transfer.rpm;
 
         backbone.pneumatics.target_air_brake = backbone.throttle_brake_control.brake_value();
@@ -87,7 +96,7 @@ impl Modules {
             });
     }
 
-    fn traction_input(&mut self, backbone: &mut Backbone) {
+    fn traction_input(&self, modules: &Modules, backbone: &mut Backbone) {
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_electricity = &mut backbone.electricity;
 
@@ -101,7 +110,8 @@ impl Modules {
                 bb_cockpit.ignition_switch.state().get_state().into()
             };
 
-            self.traction
+            modules
+                .traction
                 .piston
                 .starter_relay(&mut backbone.traction.piston_traction, state);
         }
@@ -111,23 +121,24 @@ impl Modules {
             .automatic_gear_box_mode_switch_group
             .state()
             .call_on_changed(|state| {
-                self.traction.piston.send_gearbox_mode(&state);
+                modules.traction.piston.send_gearbox_mode(&state);
             });
 
         let retarder_request = (backbone.throttle_brake_control.brake_value() > 0.02).if_else(1, 0);
 
         if backbone.retarder_request.set_if_different(retarder_request) {
-            self.traction
+            modules
+                .traction
                 .piston
                 .send_retarder_request(&RetarderRequest(retarder_request));
         }
     }
 
-    fn steering_input(&mut self, backbone: &mut Backbone) {
+    fn steering_input(&self, backbone: &mut Backbone) {
         backbone.steering.speed_mps_abs = backbone.axle.v_axle_mps().abs();
     }
 
-    fn outsidelights_input(&mut self, backbone: &mut Backbone) {
+    fn outsidelights_input(&self, backbone: &mut Backbone) {
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_outside_lights = &mut backbone.outside_lights;
         let bus_2 = backbone.electricity.unit_active(ELECTRICITY_INDEX_BUS_2);
@@ -188,7 +199,7 @@ impl Modules {
         );
     }
 
-    fn cockpit_input(&mut self, backbone: &mut Backbone) {
+    fn cockpit_input(&self, backbone: &mut Backbone) {
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_doors = &mut backbone.doors;
 
@@ -273,7 +284,7 @@ impl Modules {
             .set_if_different(backbone.piston_traction_transfer.rpm > 100.0);
     }
 
-    fn doors_input(&mut self, backbone: &mut Backbone) {
+    fn doors_input(&self, modules: &Modules, backbone: &mut Backbone) {
         let bb_doors = &mut backbone.doors;
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_powersupply = &mut backbone.electricity;
@@ -314,16 +325,16 @@ impl Modules {
             .state()
             .call_on_changed(|pos| {
                 if pos {
-                    self.doors.toggle_door(bb_doors, 0);
+                    modules.doors.toggle_door(bb_doors, 0);
                 }
             });
 
         bb_cockpit.btn_doors[1].state().call_on_changed(|pos| {
-            self.doors.set_door_target(bb_doors, 1, pos);
+            modules.doors.set_door_target(bb_doors, 1, pos);
         });
 
         bb_cockpit.btn_doors[2].state().call_on_changed(|pos| {
-            self.doors.set_door_target(bb_doors, 2, pos);
+            modules.doors.set_door_target(bb_doors, 2, pos);
         });
 
         bb_cockpit
@@ -339,7 +350,7 @@ impl Modules {
             });
     }
 
-    fn send_messages(&mut self, _backbone: &mut Backbone) {}
+    fn send_messages(&self, _backbone: &mut Backbone) {}
 }
 
 fn vdv_display_door_state(closed: bool, blocked: bool, released: bool) -> VdvDisplayDoorState {
