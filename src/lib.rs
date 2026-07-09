@@ -4,18 +4,21 @@ use lotus_extra::{
         self, BBVehicle, TickExtra,
         basic::BBSimple,
         doors::{
-            BBDoors, DoorRelease, DoorUnit, DoorUnitAutomatic, DoorUnitWing,
-            DoorUnitWingLockMode, DoorUnitWingLockRelease, Doors, PneumaticDoor,
-            StopBrakeController,
+            BBDoors, DoorRelease, DoorUnit, DoorUnitAutomatic, DoorUnitWing, DoorUnitWingLockMode,
+            DoorUnitWingLockRelease, Doors, PneumaticDoor, StopBrakeController,
+        },
+        electric_power::{
+            BBElectricPower, ElectricBatteryProperties, ElectricLimiter, ElectricPower,
+            ElectricUnit, SendPowerSignalMessage,
         },
         lights::{BBOutsideLights, Bulb, IndicatorLights, OutsideLights},
         piston_traction::{BBPistonTractionTransfer, BBThrottleBrakeControl, ThrottleBrakeControl},
-        power::{BBPowerSupply, Battery, ElectricBus, PowerSupply},
         road_vehicle::{
             Axle, BBAxle, BBRoadVehiclePneumatics, BBSteering, RoadVehiclePneumatics, Steering,
             SteeringProperties,
         },
     },
+    messages,
     vehicle::Rattling,
 };
 use lotus_script::{Animation, prelude::*};
@@ -39,6 +42,12 @@ const BULB_INDEX_DIMLIGHT_BLUE: usize = 4;
 const BULB_INDEX_BRAKE: usize = 5;
 const BULB_INDEX_BRAKE_LED: usize = 6;
 const BULB_INDEX_REARNBRAKE: usize = 7;
+
+pub const NOMINAL_VOLTAGE: f32 = 24.0;
+pub const ELECTRICITY_INDEX_BATTERY: usize = 0;
+pub const ELECTRICITY_INDEX_MIN_VOLTAGE_RELAY: usize = 1;
+pub const ELECTRICITY_INDEX_BUS_1: usize = 2;
+pub const ELECTRICITY_INDEX_BUS_2: usize = 3;
 
 struct Nd313Extras {
     rattling: Rattling,
@@ -65,7 +74,7 @@ type MyScript = BBVehicle<Modules, Backbone, Nd313Extras>;
 
 pub struct Modules {
     axles: Vec<Axle>,
-    powersupply: PowerSupply,
+    electricity: ElectricPower,
     pneumatics: RoadVehiclePneumatics,
     traction: Traction,
     throttle_brake_control: ThrottleBrakeControl,
@@ -92,13 +101,27 @@ impl Default for Modules {
         Self {
             steering: Steering::new(SteeringProperties::new(40.0)),
 
-            powersupply: PowerSupply::new(
-                vec![Battery::new(true)],
-                vec![
-                    ElectricBus::new(vec![0], 0.75).with_send_power_signal_message(),
-                    ElectricBus::new(vec![0], 0.75),
-                ],
-            ),
+            electricity: ElectricPower::new(vec![
+                ElectricUnit::new(Vec::new(), true)
+                    .with_battery(ElectricBatteryProperties::new(NOMINAL_VOLTAGE)),
+                ElectricUnit::new(vec![ELECTRICITY_INDEX_BATTERY], true).with_limiter(
+                    ElectricLimiter::default().with_voltage_limiter(10.0, Some(18.0)),
+                ),
+                ElectricUnit::new(vec![ELECTRICITY_INDEX_MIN_VOLTAGE_RELAY], false)
+                    .with_send_power_signal_message(SendPowerSignalMessage::new(
+                        messages::std::PowerSignalCabin::A,
+                        MessageTarget::broadcast_all(),
+                    )),
+                ElectricUnit::new(vec![ELECTRICITY_INDEX_MIN_VOLTAGE_RELAY], false),
+            ]),
+
+            // electricity: PowerSupply::new(
+            //     vec![Battery::new(true)],
+            //     vec![
+            //         ElectricBus::new(vec![0], 0.75).with_send_power_signal_message(),
+            //         ElectricBus::new(vec![0], 0.75),
+            //     ],
+            // ),
             axles,
             pneumatics,
             throttle_brake_control: ThrottleBrakeControl::new(0, 1, 0.85),
@@ -239,7 +262,7 @@ bb_modules! {
             throttle_brake_control => throttle_brake_control;
             steering => steering;
             cockpit => cockpit;
-            powersupply => powersupply;
+            electricity => electricity;
             traction => traction;
             outside_lights => outside_lights;
             doors => doors;
@@ -247,7 +270,7 @@ bb_modules! {
         }
         init {
             pneumatics => pneumatics;
-            powersupply => powersupply;
+            electricity => electricity;
             outside_lights => outside_lights;
             doors => doors;
             axles[1] => axle;
@@ -262,7 +285,7 @@ bb_modules! {
             cockpit => cockpit;
         }
         reset {
-            cockpit, powersupply, traction, throttle_brake_control, outside_lights, doors,
+            cockpit, electricity, traction, throttle_brake_control, outside_lights, doors,
         }
     }
 }
@@ -275,7 +298,7 @@ pub struct Backbone {
     pub throttle_brake_control: BBThrottleBrakeControl,
     pub steering: BBSteering,
     pub cockpit: BBCockpitNd313,
-    pub powersupply: BBPowerSupply,
+    pub electricity: BBElectricPower,
     pub traction: BBTraction,
     pub piston_traction_transfer: BBPistonTractionTransfer,
     pub outside_lights: BBOutsideLights,

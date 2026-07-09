@@ -1,15 +1,23 @@
 use lotus_extra::{
     bb_system::{
-        VehicleInterface, basic::BackBone, cockpit_enhanced::IgnitionSwitchStep,
+        VehicleInterface,
+        basic::BackBone,
+        cockpit_enhanced::IgnitionSwitchStep,
         lights::IndicatorState,
         vdv_dashboard::{DoorLeafLockState, VdvDisplayDoorState},
     },
     math::IfElse,
-    messages::{self, std::RetarderRequest},
+    messages::{
+        self,
+        std::{EngineStartStop, RetarderRequest},
+    },
 };
 use lotus_script::{message, prelude::*};
 
-use crate::{Backbone, Modules};
+use crate::{
+    Backbone, ELECTRICITY_INDEX_BUS_1, ELECTRICITY_INDEX_BUS_2,
+    ELECTRICITY_INDEX_MIN_VOLTAGE_RELAY, Modules, NOMINAL_VOLTAGE,
+};
 
 const DOORS_MAX_SPEED_MPS: f32 = 3.0 / 3.6;
 const MIN_THROTTLE_RELEASE_STOP_BRAKE: f32 = 0.1;
@@ -48,7 +56,7 @@ impl VehicleInterface<Backbone> for Modules {
 
 impl Modules {
     fn powersupply_input(&self, backbone: &mut Backbone) {
-        let bb_powersupply = &mut backbone.powersupply;
+        let bb_electricity = &mut backbone.electricity;
 
         backbone
             .cockpit
@@ -56,8 +64,10 @@ impl Modules {
             .ignition_switch
             .state()
             .call_on_changed(|state| {
-                bb_powersupply.set_main_relay(0, state >= IgnitionSwitchStep::Step1);
-                bb_powersupply.set_main_relay(1, state >= IgnitionSwitchStep::Step2);
+                bb_electricity
+                    .set_switch(ELECTRICITY_INDEX_BUS_1, state >= IgnitionSwitchStep::Step1);
+                bb_electricity
+                    .set_switch(ELECTRICITY_INDEX_BUS_2, state >= IgnitionSwitchStep::Step2);
             });
     }
 
@@ -79,14 +89,22 @@ impl Modules {
 
     fn traction_input(&mut self, backbone: &mut Backbone) {
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
-        let bb_powersupply = &mut backbone.powersupply;
+        let bb_electricity = &mut backbone.electricity;
 
         // Engine Start/Stop:
-        self.traction.piston.starter_relay(
-            &mut backbone.traction.piston_traction,
-            bb_cockpit.ignition_switch.state().get_state().into(),
-            bb_powersupply.get_battery(0).unwrap(),
-        );
+        let elec_source = bb_electricity.unit_active(ELECTRICITY_INDEX_MIN_VOLTAGE_RELAY);
+
+        if bb_cockpit.ignition_switch.state().changed() || elec_source.changed() {
+            let state = if !elec_source.get_state() {
+                EngineStartStop::None
+            } else {
+                bb_cockpit.ignition_switch.state().get_state().into()
+            };
+
+            self.traction
+                .piston
+                .starter_relay(&mut backbone.traction.piston_traction, state);
+        }
 
         // Gearbox Mode
         bb_cockpit
@@ -112,10 +130,18 @@ impl Modules {
     fn outsidelights_input(&mut self, backbone: &mut Backbone) {
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_outside_lights = &mut backbone.outside_lights;
-        let bus_2 = backbone.powersupply.bus_active(1);
-        let voltage_available = backbone.powersupply.get_bus(0).unwrap().voltage_available();
+        let bus_2 = backbone.electricity.unit_active(ELECTRICITY_INDEX_BUS_2);
+        let voltage_available = backbone
+            .electricity
+            .unit_voltage_available(ELECTRICITY_INDEX_BUS_1)
+            / NOMINAL_VOLTAGE;
 
-        bb_outside_lights.set_voltage(backbone.powersupply.get_bus(1).unwrap().voltage_available());
+        bb_outside_lights.set_unified_voltage(
+            backbone
+                .electricity
+                .unit_voltage_available(ELECTRICITY_INDEX_BUS_2)
+                / NOMINAL_VOLTAGE,
+        );
 
         if voltage_available > 0.0 && bb_cockpit.flash_light_switch.state().get_state() {
             bb_outside_lights.set_indicator(IndicatorState::Warning);
@@ -166,8 +192,12 @@ impl Modules {
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_doors = &mut backbone.doors;
 
-        bb_cockpit.voltage = backbone.powersupply.get_bus(0).unwrap().voltage();
-        bb_cockpit.voltage_available = backbone.powersupply.get_bus(0).unwrap().voltage_available();
+        bb_cockpit.unified_voltage =
+            backbone.electricity.unit_voltage(ELECTRICITY_INDEX_BUS_1) / NOMINAL_VOLTAGE;
+        bb_cockpit.unified_voltage_available = backbone
+            .electricity
+            .unit_voltage_available(ELECTRICITY_INDEX_BUS_1)
+            / NOMINAL_VOLTAGE;
 
         bb_cockpit.pneumatics = backbone.pneumatics;
 
@@ -180,17 +210,19 @@ impl Modules {
             .blink_relay()
             .forward_on_changed(&mut bb_cockpit.indicators_bulbs);
 
-        bb_doors
-            .door_closed(0, 0)
-            .call_on_changed_two(bb_doors.door_closed(0, 1), |closed1, closed2| {
+        bb_doors.door_closed(0, 0).call_on_changed_two(
+            bb_doors.door_closed(0, 1),
+            |closed1, closed2| {
                 bb_cockpit.il_doors_target[0].set(!(closed1 && closed2));
-            });
+            },
+        );
 
-        bb_doors
-            .door_closed(1, 0)
-            .call_on_changed_two(bb_doors.door_closed(2, 0), |closed1, closed2| {
+        bb_doors.door_closed(1, 0).call_on_changed_two(
+            bb_doors.door_closed(2, 0),
+            |closed1, closed2| {
                 bb_cockpit.rear_doors = !(closed1 && closed2);
-            });
+            },
+        );
 
         bb_doors
             .stop_sign(1)
@@ -204,29 +236,37 @@ impl Modules {
             .stop_brake()
             .forward_on_changed(&mut bb_cockpit.stop_brake);
 
-        let door_released = bb_doors.release_target(0).get_state()
-            && bb_doors.release_activatable.get_state();
+        let door_released =
+            bb_doors.release_target(0).get_state() && bb_doors.release_activatable.get_state();
 
-        bb_cockpit.display_door_1_1.set_if_different(vdv_display_door_state(
-            bb_doors.door_closed(0, 0).get_state(),
-            bb_doors.wing_lock(0, 0).get_state(),
-            door_released,
-        ));
-        bb_cockpit.display_door_1_2.set_if_different(vdv_display_door_state(
-            bb_doors.door_closed(0, 1).get_state(),
-            bb_doors.wing_lock(0, 1).get_state(),
-            door_released,
-        ));
-        bb_cockpit.display_door_2.set_if_different(vdv_display_door_state(
-            bb_doors.door_closed(1, 0).get_state(),
-            false,
-            door_released,
-        ));
-        bb_cockpit.display_door_3.set_if_different(vdv_display_door_state(
-            bb_doors.door_closed(2, 0).get_state(),
-            false,
-            door_released,
-        ));
+        bb_cockpit
+            .display_door_1_1
+            .set_if_different(vdv_display_door_state(
+                bb_doors.door_closed(0, 0).get_state(),
+                bb_doors.wing_lock(0, 0).get_state(),
+                door_released,
+            ));
+        bb_cockpit
+            .display_door_1_2
+            .set_if_different(vdv_display_door_state(
+                bb_doors.door_closed(0, 1).get_state(),
+                bb_doors.wing_lock(0, 1).get_state(),
+                door_released,
+            ));
+        bb_cockpit
+            .display_door_2
+            .set_if_different(vdv_display_door_state(
+                bb_doors.door_closed(1, 0).get_state(),
+                false,
+                door_released,
+            ));
+        bb_cockpit
+            .display_door_3
+            .set_if_different(vdv_display_door_state(
+                bb_doors.door_closed(2, 0).get_state(),
+                false,
+                door_released,
+            ));
 
         bb_cockpit
             .engine_running
@@ -236,14 +276,14 @@ impl Modules {
     fn doors_input(&mut self, backbone: &mut Backbone) {
         let bb_doors = &mut backbone.doors;
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
-        let bb_powersupply = &mut backbone.powersupply;
+        let bb_powersupply = &mut backbone.electricity;
 
         bb_doors.set_p_available(800_000.0);
 
         // Stop brake and release
 
         bb_powersupply
-            .bus_active(1)
+            .unit_active(ELECTRICITY_INDEX_BUS_2)
             .forward_on_changed(&mut bb_doors.power_available);
 
         bb_doors.set_throttle_pressed(
@@ -252,9 +292,13 @@ impl Modules {
 
         let vehicle_stopped = backbone.axle.v_axle_mps() < DOORS_MAX_SPEED_MPS;
 
-        bb_doors
-            .release_activatable
-            .set_if_different(vehicle_stopped && backbone.powersupply.bus_active(1).get_state());
+        bb_doors.release_activatable.set_if_different(
+            vehicle_stopped
+                && backbone
+                    .electricity
+                    .unit_active(ELECTRICITY_INDEX_BUS_2)
+                    .get_state(),
+        );
 
         bb_cockpit.btn_door_releases[0]
             .state()
@@ -282,14 +326,17 @@ impl Modules {
             self.doors.set_door_target(bb_doors, 2, pos);
         });
 
-        bb_cockpit.sw_door_leaf_lock.state().call_on_changed(|state| {
-            bb_doors
-                .wing_lock(0, 0)
-                .set(state == DoorLeafLockState::Left);
-            bb_doors
-                .wing_lock(0, 1)
-                .set(state == DoorLeafLockState::Right);
-        });
+        bb_cockpit
+            .sw_door_leaf_lock
+            .state()
+            .call_on_changed(|state| {
+                bb_doors
+                    .wing_lock(0, 0)
+                    .set(state == DoorLeafLockState::Left);
+                bb_doors
+                    .wing_lock(0, 1)
+                    .set(state == DoorLeafLockState::Right);
+            });
     }
 
     fn send_messages(&mut self, _backbone: &mut Backbone) {}

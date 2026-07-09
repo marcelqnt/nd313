@@ -14,7 +14,7 @@ impl Default for Traction {
     fn default() -> Self {
         Self {
             transfer: PistonTractionTransfer::new(0, 1),
-            piston: PistonTraction::new(0, 1, 0.5),
+            piston: PistonTraction::new(0, 1),
         }
     }
 }
