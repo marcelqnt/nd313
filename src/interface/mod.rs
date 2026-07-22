@@ -1,5 +1,6 @@
 mod cockpit;
 mod doors;
+mod inside_lights;
 mod messages;
 mod outside_lights;
 mod pneumatics;
@@ -14,13 +15,13 @@ use crate::{Backbone, Modules};
 
 pub use cockpit::Nd313CockpitInterface;
 pub use doors::Nd313DoorsInterface;
+pub use inside_lights::Nd313InsideLightsInterface;
 pub use messages::Nd313MessageInterface;
 pub use outside_lights::Nd313OutsideLightsInterface;
 pub use pneumatics::Nd313PneumaticsInterface;
 pub use power::Nd313PowerInterface;
 pub use steering::Nd313SteeringInterface;
 pub use traction::Nd313TractionInterface;
-
 /// Orchestrator: ruft die Domänen-Interfaces in der erforderlichen Reihenfolge auf.
 #[derive(Default)]
 pub struct Nd313Interface {
@@ -32,6 +33,7 @@ pub struct Nd313Interface {
     cockpit: Nd313CockpitInterface,
     doors: Nd313DoorsInterface,
     messages: Nd313MessageInterface,
+    inside_lights: Nd313InsideLightsInterface,
 }
 
 impl VehicleInterface<Modules, Backbone> for Nd313Interface {
@@ -46,6 +48,7 @@ impl VehicleInterface<Modules, Backbone> for Nd313Interface {
         self.traction.wire(modules, backbone);
         self.steering.wire(modules, backbone);
         self.outside_lights.wire(modules, backbone);
+        self.inside_lights.wire(modules, backbone);
         self.cockpit.wire(modules, backbone);
         self.doors.wire(modules, backbone);
     }

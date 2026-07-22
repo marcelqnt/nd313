@@ -4,7 +4,10 @@ use lotus_extra::{
             BackBoneResetInputOutput, BackBoneResetType, ModuleInit, ModuleOnAction,
             ModuleOnMessage, ModuleTick,
         },
-        cockpit::{Button, ButtonBehaviour, IndicatorLight},
+        cockpit::{
+            BBButton, BBStepSwitch, Button, ButtonBehaviour, IndicatorLight, StepSwitch,
+            TwoStepState,
+        },
         cockpit_enhanced::{
             AutomaticGearBoxModeSwitchGroupSwitch, AutomaticGearBoxModeSwitchProperties,
             BBPneumaticHandbrakeLever, IndicatorSwitch, IndicatorSwitchProperties,
@@ -12,7 +15,10 @@ use lotus_extra::{
             automatic_gear_box_mode_switch,
         },
         road_vehicle::BBRoadVehiclePneumatics,
-        vdv_dashboard::{BBVdvDashboard, VdvDashboard, standard_switch},
+        vdv_dashboard::{
+            BBVdvDashboard, VdvDashboard, standard_switch, standard_switch_springloaded,
+            two_sided_standard_switch,
+        },
         vdv_display::{VdvBusType, VdvDisplay, VdvDisplayProperties, VdvRampType},
     },
     input::InputEvent,
@@ -23,6 +29,10 @@ use lotus_script::action::ActionEvent;
 pub struct CockpitNd313 {
     pub vdv_dashboard: VdvDashboard<BBRoadVehiclePneumatics>,
     pub parking_brake: PneumaticHandbrakeLever,
+    pub passender_fan: StepSwitch<TwoStepState>,
+    pub door_unlock_refill: Button,
+    pub front_window_heat: Button,
+    pub mirror_heat: Button,
 }
 
 impl Default for CockpitNd313 {
@@ -66,7 +76,7 @@ impl Default for CockpitNd313 {
                         "snd_Sw_Indicator_Autooff",
                         "snd_Sw_Indicator_Autooff_Notch",
                         810.0,
-                        30.0,
+                        150.0,
                     ),
                 ))
                 .add_std_flash_light_switch()
@@ -123,6 +133,29 @@ impl Default for CockpitNd313 {
             parking_brake: PneumaticHandbrakeLever::new(
                 PneumaticHandbrakeLeverProperties::new_std(),
             ),
+            passender_fan: two_sided_standard_switch(
+                "Sw_PassengerFan_Pos",
+                [
+                    (TwoStepState::Off, None),
+                    (TwoStepState::StepA, None),
+                    (TwoStepState::StepB, None),
+                ],
+            )
+            .with_input_minus(InputEvent::new("PassengerFan_Minus", 0))
+            .with_input_plus(InputEvent::new("PassengerFan_Plus", 0)),
+            door_unlock_refill: standard_switch_springloaded(
+                "Sw_DoorUnlockReFill_Pos",
+                InputEvent::new("DoorUnlockReFill", 0),
+                1.0,
+            ),
+            front_window_heat: standard_switch(
+                "Sw_FrontWindowHeat_Pos",
+                InputEvent::new("FrontWindowHeatToggle", 0),
+            ),
+            mirror_heat: standard_switch(
+                "Sw_MirrorHeat_Pos",
+                InputEvent::new("MirrorHeatToggle", 0),
+            ),
         }
     }
 }
@@ -131,6 +164,10 @@ impl Default for CockpitNd313 {
 pub struct BBCockpitNd313 {
     pub vdv_dashboard: BBVdvDashboard<BBRoadVehiclePneumatics>,
     pub parking_brake: BBPneumaticHandbrakeLever,
+    pub passender_fan: BBStepSwitch<TwoStepState>,
+    pub door_unlock_refill: BBButton,
+    pub front_window_heat: BBButton,
+    pub mirror_heat: BBButton,
 }
 
 impl ModuleTick<BBCockpitNd313> for CockpitNd313 {
@@ -143,6 +180,11 @@ impl ModuleInit<BBCockpitNd313> for CockpitNd313 {
     fn init(&self, backbone: &mut BBCockpitNd313) {
         self.vdv_dashboard.init(&mut backbone.vdv_dashboard);
         self.parking_brake.init(&mut backbone.parking_brake);
+        self.passender_fan.init(&mut backbone.passender_fan);
+        self.door_unlock_refill
+            .init(&mut backbone.door_unlock_refill);
+        self.front_window_heat.init(&mut backbone.front_window_heat);
+        self.mirror_heat.init(&mut backbone.mirror_heat);
     }
 }
 
@@ -153,6 +195,18 @@ impl ModuleOnAction<BBCockpitNd313> for CockpitNd313 {
             | self
                 .parking_brake
                 .on_action(&mut backbone.parking_brake, action)
+            | self
+                .passender_fan
+                .on_action(&mut backbone.passender_fan, action)
+            | self
+                .door_unlock_refill
+                .on_action(&mut backbone.door_unlock_refill, action)
+            | self
+                .front_window_heat
+                .on_action(&mut backbone.front_window_heat, action)
+            | self
+                .mirror_heat
+                .on_action(&mut backbone.mirror_heat, action)
     }
 }
 
@@ -171,5 +225,9 @@ impl BackBoneResetInputOutput for BBCockpitNd313 {
     fn reset(&mut self, reset_type: BackBoneResetType) {
         self.vdv_dashboard.reset(reset_type);
         self.parking_brake.reset(reset_type);
+        self.passender_fan.reset(reset_type);
+        self.door_unlock_refill.reset(reset_type);
+        self.front_window_heat.reset(reset_type);
+        self.mirror_heat.reset(reset_type);
     }
 }

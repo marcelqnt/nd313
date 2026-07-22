@@ -25,11 +25,13 @@ use lotus_script::{Animation, prelude::*};
 
 use crate::{
     cockpit::{BBCockpitNd313, CockpitNd313},
+    inside_lights::{BBInsideLightsNd313, InsideLightsNd313},
     interface::Nd313Interface,
     traction::{BBTraction, Traction},
 };
 
 mod cockpit;
+mod inside_lights;
 mod interface;
 mod traction;
 
@@ -85,6 +87,7 @@ pub struct Modules {
     pub(crate) traction: Traction,
     throttle_brake_control: ThrottleBrakeControl,
     outside_lights: OutsideLights,
+    inside_lights: InsideLightsNd313,
     pub(crate) doors: Doors,
     cockpit: CockpitNd313,
     steering: Steering,
@@ -111,9 +114,8 @@ impl Default for Modules {
                 .with_battery(ElectricBatteryProperties::new(NOMINAL_VOLTAGE)),
         );
         let electricity_min_voltage_relay = electricity.add_unit_get_index(
-            ElectricUnit::new(vec![electricity_battery], true).with_limiter(
-                ElectricLimiter::default().with_voltage_limiter(10.0, Some(18.0)),
-            ),
+            ElectricUnit::new(vec![electricity_battery], true)
+                .with_limiter(ElectricLimiter::default().with_voltage_limiter(10.0, Some(18.0))),
         );
         let electricity_bus_1 = electricity.add_unit_get_index(
             ElectricUnit::new(vec![electricity_min_voltage_relay], false)
@@ -192,6 +194,7 @@ impl Default for Modules {
             throttle_brake_control: ThrottleBrakeControl::new(0, 1, 0.85),
 
             outside_lights,
+            inside_lights: InsideLightsNd313::default(),
             cockpit: CockpitNd313::default(),
             doors: Doors::default()
                 .add_release(DoorRelease)
@@ -294,6 +297,7 @@ bb_modules! {
             electricity => electricity;
             traction => traction;
             outside_lights => outside_lights;
+            inside_lights => inside_lights;
             doors => doors;
             axles[1] => axle;
         }
@@ -301,6 +305,7 @@ bb_modules! {
             pneumatics => pneumatics;
             electricity => electricity;
             outside_lights => outside_lights;
+            inside_lights => inside_lights;
             doors => doors;
             axles[1] => axle;
             cockpit => cockpit;
@@ -331,6 +336,7 @@ pub struct Backbone {
     pub traction: BBTraction,
     pub piston_traction_transfer: BBPistonTractionTransfer,
     pub outside_lights: BBOutsideLights,
+    pub inside_lights: BBInsideLightsNd313,
     pub doors: BBDoors,
     pub axle: BBAxle,
     // own
