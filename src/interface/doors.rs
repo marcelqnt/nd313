@@ -1,7 +1,7 @@
 use lotus_extra::bb_system::vdv_dashboard::DoorLeafLockState;
-use lotus_extra::bb_system::{basic::BackBone, DomainInterface};
+use lotus_extra::bb_system::{DomainInterface, basic::BackBone};
 
-use crate::{Backbone, Modules, DOORS_MAX_SPEED_MPS, MIN_THROTTLE_RELEASE_STOP_BRAKE};
+use crate::{Backbone, DOORS_MAX_SPEED_MPS, MIN_THROTTLE_RELEASE_STOP_BRAKE, Modules};
 
 #[derive(Default)]
 pub struct Nd313DoorsInterface;

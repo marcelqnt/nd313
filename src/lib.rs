@@ -25,13 +25,11 @@ use lotus_script::{Animation, prelude::*};
 
 use crate::{
     cockpit::{BBCockpitNd313, CockpitNd313},
-    inside_lights::{BBInsideLightsNd313, InsideLightsNd313},
     interface::Nd313Interface,
     traction::{BBTraction, Traction},
 };
 
 mod cockpit;
-mod inside_lights;
 mod interface;
 mod traction;
 
@@ -44,9 +42,13 @@ pub const NOMINAL_VOLTAGE: f32 = 24.0;
 
 /// Von `add_unit_get_index` / `add_bulb_get_index` beim Aufbau befüllt — keine festen Konstanten.
 pub(crate) struct Nd313Indices {
+    pub electricity_battery: usize,
     pub electricity_min_voltage_relay: usize,
     pub electricity_bus_1: usize,
     pub electricity_bus_2: usize,
+    pub lamp_inside_lower_deck: usize,
+    pub lamp_inside_upper_deck: usize,
+    pub lamp_inside_lower_front_right: usize,
     pub bulb_park_n_rear: usize,
     pub bulb_park_n_rear_led: usize,
     pub bulb_dim_light: usize,
@@ -87,7 +89,6 @@ pub struct Modules {
     pub(crate) traction: Traction,
     throttle_brake_control: ThrottleBrakeControl,
     outside_lights: OutsideLights,
-    inside_lights: InsideLightsNd313,
     pub(crate) doors: Doors,
     cockpit: CockpitNd313,
     steering: Steering,
@@ -128,6 +129,16 @@ impl Default for Modules {
             vec![electricity_min_voltage_relay],
             false,
         ));
+
+        let lamp_inside_lower_deck =
+            electricity.add_lamp_get_index(electricity_bus_1, 10.0, 5.0, 20.0, NOMINAL_VOLTAGE);
+        electricity.set_appliance_variable(lamp_inside_lower_deck, "Light_Cabin_OtherLights");
+        let lamp_inside_upper_deck =
+            electricity.add_lamp_get_index(electricity_bus_1, 10.0, 5.0, 20.0, NOMINAL_VOLTAGE);
+        electricity.set_appliance_variable(lamp_inside_upper_deck, "Light_Cabin_Upper");
+        let lamp_inside_lower_front_right =
+            electricity.add_lamp_get_index(electricity_bus_1, 10.0, 5.0, 20.0, NOMINAL_VOLTAGE);
+        electricity.set_appliance_variable(lamp_inside_lower_front_right, "Light_Cabin_FirstLight");
 
         let mut outside_lights = OutsideLights::default().with_indicator(
             IndicatorLights::new(
@@ -171,9 +182,13 @@ impl Default for Modules {
         );
 
         let indices = Nd313Indices {
+            electricity_battery,
             electricity_min_voltage_relay,
             electricity_bus_1,
             electricity_bus_2,
+            lamp_inside_lower_deck,
+            lamp_inside_upper_deck,
+            lamp_inside_lower_front_right,
             bulb_park_n_rear,
             bulb_park_n_rear_led,
             bulb_dim_light,
@@ -194,7 +209,6 @@ impl Default for Modules {
             throttle_brake_control: ThrottleBrakeControl::new(0, 1, 0.85),
 
             outside_lights,
-            inside_lights: InsideLightsNd313::default(),
             cockpit: CockpitNd313::default(),
             doors: Doors::default()
                 .add_release(DoorRelease)
@@ -297,7 +311,6 @@ bb_modules! {
             electricity => electricity;
             traction => traction;
             outside_lights => outside_lights;
-            inside_lights => inside_lights;
             doors => doors;
             axles[1] => axle;
         }
@@ -305,7 +318,6 @@ bb_modules! {
             pneumatics => pneumatics;
             electricity => electricity;
             outside_lights => outside_lights;
-            inside_lights => inside_lights;
             doors => doors;
             axles[1] => axle;
             cockpit => cockpit;
@@ -336,7 +348,6 @@ pub struct Backbone {
     pub traction: BBTraction,
     pub piston_traction_transfer: BBPistonTractionTransfer,
     pub outside_lights: BBOutsideLights,
-    pub inside_lights: BBInsideLightsNd313,
     pub doors: BBDoors,
     pub axle: BBAxle,
     // own

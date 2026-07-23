@@ -3,7 +3,7 @@ use lotus_extra::{
     math::IfElse,
 };
 
-use crate::{Backbone, Modules, NOMINAL_VOLTAGE};
+use crate::{Backbone, Modules};
 
 #[derive(Default)]
 pub struct Nd313InsideLightsInterface;
@@ -11,34 +11,26 @@ pub struct Nd313InsideLightsInterface;
 impl DomainInterface<Modules, Backbone> for Nd313InsideLightsInterface {
     fn wire(&mut self, modules: &Modules, backbone: &mut Backbone) {
         let idx = &modules.indices;
-        let bb_inside_lights = &mut backbone.inside_lights;
-        let bb_cockpit = &mut backbone.cockpit;
-        let voltage_available = backbone
-            .electricity
-            .unit_voltage(idx.electricity_min_voltage_relay)
-            / NOMINAL_VOLTAGE;
+        let bb_electricity = &mut backbone.electricity;
+        let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
 
-        bb_inside_lights.lower_deck_input = (bb_cockpit
-            .vdv_dashboard
-            .inside_light_step_switch
-            .state()
-            .get_state()
-            != TwoStepState::Off)
-            .if_else(voltage_available, 0.0);
+        let step_switch = bb_cockpit.inside_light_step_switch.state().get_state();
+        let secondary_switch = bb_cockpit.inside_light_secondary_switch.state().get_state();
 
-        bb_inside_lights.lower_front_right_input = (bb_cockpit
-            .vdv_dashboard
-            .inside_light_step_switch
-            .state()
-            .get_state()
-            == TwoStepState::StepB)
-            .if_else(voltage_available, 0.0);
-
-        bb_inside_lights.upper_deck_input = bb_cockpit
-            .vdv_dashboard
-            .inside_light_secondary_switch
-            .state()
-            .get_state()
-            .if_else(voltage_available, 0.0);
+        modules.electricity.set_lamp_input(
+            bb_electricity,
+            idx.lamp_inside_lower_deck,
+            (step_switch != TwoStepState::Off).if_else(1.0, 0.0),
+        );
+        modules.electricity.set_lamp_input(
+            bb_electricity,
+            idx.lamp_inside_lower_front_right,
+            (step_switch == TwoStepState::StepB).if_else(1.0, 0.0),
+        );
+        modules.electricity.set_lamp_input(
+            bb_electricity,
+            idx.lamp_inside_upper_deck,
+            secondary_switch.if_else(1.0, 0.0),
+        );
     }
 }
