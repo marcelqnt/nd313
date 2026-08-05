@@ -1,11 +1,12 @@
 use lotus_extra::{
     bb_modules,
     bb_system::{
-        self, BBVehicle, TickExtra,
+        BBVehicle, ElectricBatteryModel, TickExtra,
         basic::BBSimple,
         doors::{
-            BBDoors, DoorRelease, DoorUnit, DoorUnitAutomatic, DoorUnitWing, DoorUnitWingLockMode,
-            DoorUnitWingLockRelease, Doors, PneumaticDoor, StopBrakeController,
+            BBDoors, Door, DoorRelease, DoorUnit, DoorUnitAutomatic, DoorUnitWing,
+            DoorUnitWingLockMode, DoorUnitWingLockRelease, Doors, PneumaticBehaviour,
+            StopBrakeController,
         },
         electric_power::{
             BBElectricPower, ElectricBatteryProperties, ElectricLimiter, ElectricPower,
@@ -38,7 +39,8 @@ const WHEEL_DIAMETER: f32 = 0.9;
 pub(crate) const DOORS_MAX_SPEED_MPS: f32 = 3.0 / 3.6;
 pub(crate) const MIN_THROTTLE_RELEASE_STOP_BRAKE: f32 = 0.1;
 
-pub const NOMINAL_VOLTAGE: f32 = 24.0;
+pub const NOMINAL_VOLTAGE: f32 = 28.0;
+pub const BATTERY_VOLTAGE: f32 = 24.0;
 
 /// Von `add_unit_get_index` / `add_bulb_get_index` beim Aufbau befüllt — keine festen Konstanten.
 pub(crate) struct Nd313Indices {
@@ -110,10 +112,10 @@ impl Default for Modules {
             .build();
 
         let mut electricity = ElectricPower::default();
-        let electricity_battery = electricity.add_unit_get_index(
-            ElectricUnit::new(vec![], true)
-                .with_battery(ElectricBatteryProperties::new(NOMINAL_VOLTAGE)),
-        );
+        let electricity_battery =
+            electricity.add_unit_get_index(ElectricUnit::new(vec![], true).with_battery(
+                ElectricBatteryModel::default().with_rated_voltage_v(BATTERY_VOLTAGE),
+            ));
         let electricity_min_voltage_relay = electricity.add_unit_get_index(
             ElectricUnit::new(vec![electricity_battery], true)
                 .with_limiter(ElectricLimiter::default().with_voltage_limiter(10.0, Some(18.0))),
@@ -210,7 +212,7 @@ impl Default for Modules {
 
             outside_lights,
             cockpit: CockpitNd313::default(),
-            doors: Doors::default()
+            doors: Doors::new()
                 .add_release(DoorRelease)
                 .add_stop_brake_controller(
                     StopBrakeController::default()
@@ -222,9 +224,9 @@ impl Default for Modules {
                 .add_door(DoorUnit::new(
                     vec![
                         DoorUnitWing::new(
-                            PneumaticDoor::new(
+                            Door::new_pneumatic(
                                 2.5 / 698_700.0,
-                                bb_system::doors::PneumaticDoorPressureRate::Linear {
+                                PneumaticBehaviour::Linear {
                                     rate: 0.5 / 698_700.0,
                                     p_end_normalized: 0.2,
                                 },
@@ -238,9 +240,9 @@ impl Default for Modules {
                         .with_wing_lock_mode(DoorUnitWingLockMode::BlockOpen)
                         .with_wing_lock_release(DoorUnitWingLockRelease::SyncOpen),
                         DoorUnitWing::new(
-                            PneumaticDoor::new(
+                            Door::new_pneumatic(
                                 2.4 / 698_700.0,
-                                bb_system::doors::PneumaticDoorPressureRate::Linear {
+                                PneumaticBehaviour::Linear {
                                     rate: 0.4 / 698_700.0,
                                     p_end_normalized: 0.21,
                                 },
@@ -259,9 +261,9 @@ impl Default for Modules {
                 ))
                 .add_door(DoorUnit::new(
                     vec![DoorUnitWing::new(
-                        PneumaticDoor::new(
+                        Door::new_pneumatic(
                             6.0 / 698_700.0,
-                            bb_system::doors::PneumaticDoorPressureRate::Linear {
+                            PneumaticBehaviour::Linear {
                                 rate: 0.36 / 698_700.0,
                                 p_end_normalized: 0.3,
                             },
@@ -278,9 +280,9 @@ impl Default for Modules {
                 ))
                 .add_door(DoorUnit::new(
                     vec![DoorUnitWing::new(
-                        PneumaticDoor::new(
+                        Door::new_pneumatic(
                             6.0 / 698_700.0,
-                            bb_system::doors::PneumaticDoorPressureRate::Linear {
+                            PneumaticBehaviour::Linear {
                                 rate: 0.36 / 698_700.0,
                                 p_end_normalized: 0.3,
                             },

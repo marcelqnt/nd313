@@ -16,13 +16,13 @@ impl DomainInterface<Modules, Backbone> for Nd313OutsideLightsInterface {
         let bus_2 = backbone.electricity.unit_active(idx.electricity_bus_2);
         let voltage_available = backbone
             .electricity
-            .unit_voltage_available(idx.electricity_bus_1)
+            .unit_voltage_available_v(idx.electricity_bus_1)
             / NOMINAL_VOLTAGE;
 
-        bb_outside_lights.set_unified_voltage(
+        bb_outside_lights.set_voltage_normalized(
             backbone
                 .electricity
-                .unit_voltage_available(idx.electricity_bus_2)
+                .unit_voltage_available_v(idx.electricity_bus_2)
                 / NOMINAL_VOLTAGE,
         );
 
@@ -47,16 +47,11 @@ impl DomainInterface<Modules, Backbone> for Nd313OutsideLightsInterface {
         let brake_light: f32 =
             (backbone.throttle_brake_control.brake_value() > 0.02).if_else(1.0, 0.0);
 
-        bb_outside_lights.set_bulb_brightness(
-            idx.bulb_park_n_rear,
-            park_n_rear * voltage_available,
-        );
+        bb_outside_lights
+            .set_bulb_brightness(idx.bulb_park_n_rear, park_n_rear * voltage_available);
         bb_outside_lights.set_bulb_brightness(idx.bulb_park_n_rear_led, park_n_rear);
 
-        bb_outside_lights.set_bulb_brightness(
-            idx.bulb_dim_light,
-            dim_light * voltage_available,
-        );
+        bb_outside_lights.set_bulb_brightness(idx.bulb_dim_light, dim_light * voltage_available);
         bb_outside_lights.set_bulb_brightness(
             idx.bulb_dim_light_scale,
             dim_light.max(park_n_rear * 0.4) * voltage_available,
@@ -64,15 +59,10 @@ impl DomainInterface<Modules, Backbone> for Nd313OutsideLightsInterface {
 
         bb_outside_lights.set_bulb_brightness(idx.bulb_dim_light_blue, 0.5 + 0.5 * dim_light);
 
-        bb_outside_lights.set_bulb_brightness(
-            idx.bulb_brake,
-            brake_light * voltage_available,
-        );
+        bb_outside_lights.set_bulb_brightness(idx.bulb_brake, brake_light * voltage_available);
         bb_outside_lights.set_bulb_brightness(idx.bulb_brake_led, brake_light);
 
-        bb_outside_lights.set_bulb_brightness(
-            idx.bulb_rear_n_brake,
-            brake_light.max(park_n_rear * 0.7),
-        );
+        bb_outside_lights
+            .set_bulb_brightness(idx.bulb_rear_n_brake, brake_light.max(park_n_rear * 0.7));
     }
 }

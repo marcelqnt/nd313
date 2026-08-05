@@ -1,5 +1,5 @@
 use lotus_extra::bb_system::vdv_dashboard::VdvDisplayDoorState;
-use lotus_extra::bb_system::{basic::BackBone, DomainInterface};
+use lotus_extra::bb_system::{DomainInterface, basic::BackBone};
 
 use crate::{Backbone, Modules, NOMINAL_VOLTAGE};
 
@@ -12,11 +12,11 @@ impl DomainInterface<Modules, Backbone> for Nd313CockpitInterface {
         let bb_cockpit = &mut backbone.cockpit.vdv_dashboard;
         let bb_doors = &mut backbone.doors;
 
-        bb_cockpit.unified_voltage =
-            backbone.electricity.unit_voltage(idx.electricity_bus_1) / NOMINAL_VOLTAGE;
-        bb_cockpit.unified_voltage_available = backbone
+        bb_cockpit.voltage_normalized =
+            backbone.electricity.unit_voltage_v(idx.electricity_bus_1) / NOMINAL_VOLTAGE;
+        bb_cockpit.voltage_available_normalized = backbone
             .electricity
-            .unit_voltage_available(idx.electricity_bus_1)
+            .unit_voltage_available_v(idx.electricity_bus_1)
             / NOMINAL_VOLTAGE;
 
         bb_cockpit.pneumatics = backbone.pneumatics;
