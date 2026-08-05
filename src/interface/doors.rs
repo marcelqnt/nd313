@@ -1,3 +1,4 @@
+use lotus_extra::bb_system::doors::{DoorReleaseBehaviour, DoorTargetCommand};
 use lotus_extra::bb_system::vdv_dashboard::DoorLeafLockState;
 use lotus_extra::bb_system::{DomainInterface, basic::BackBone};
 
@@ -51,12 +52,30 @@ impl DomainInterface<Modules, Backbone> for Nd313DoorsInterface {
                 }
             });
 
+        let bool_to_door_target_command = |pos: bool| {
+            if pos {
+                DoorTargetCommand::OpenNoTimer
+            } else {
+                DoorTargetCommand::Open
+            }
+        };
+
         bb_cockpit.btn_doors[1].state().call_on_changed(|pos| {
-            modules.doors.set_door_target(bb_doors, 1, pos);
+            modules.doors.set_door_target(
+                bb_doors,
+                1,
+                bool_to_door_target_command(pos),
+                DoorReleaseBehaviour::PendingRequest,
+            );
         });
 
         bb_cockpit.btn_doors[2].state().call_on_changed(|pos| {
-            modules.doors.set_door_target(bb_doors, 2, pos);
+            modules.doors.set_door_target(
+                bb_doors,
+                2,
+                bool_to_door_target_command(pos),
+                DoorReleaseBehaviour::PendingRequest,
+            );
         });
 
         bb_cockpit
